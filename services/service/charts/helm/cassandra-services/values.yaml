@@ -1,0 +1,310 @@
+## Default values for helm-chart.
+## This is a YAML-formatted file.
+## Declare variables to be passed into your templates.
+#
+operator:
+  name: operator-service
+  image: ghcr.io/netcracker/qubership-cassandra-supplementary:main
+  initImage: ghcr.io/netcracker/qubership-credential-manager:main
+  podName: cassandra-services
+  priorityClassName:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  nodeLabels:
+# PV recycler settings
+recycler:
+  install: false
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 100m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+
+cassandra:
+  install: true
+  port: 9042
+  secretName: cassandra-secret.v1
+  tls: false
+  deploymentSchema:
+    dataCenters:
+      - name: dc1
+        replicas: 3
+        deploy: true
+
+# Specifies delay before CR processing
+crProcessingDelaySeconds: 5
+
+# Specifies timeouts for resources operations
+waitTimeout: 3600
+gocqlConnectTimeout: 20
+gocqlTimeout: 20
+
+ipV6: false
+stopOnFailedResourceUpdate: false
+# Specifies log level of operator pod
+debugLog: false
+serviceAccountName: cassandra-services
+securityContext:
+  fsGroup: 999
+  runAsUser: 999
+  runAsGroup: 1001
+  supplementalGroups:
+
+# Specifies image pull policy
+imagePullPolicy: IfNotPresent
+
+createIngress: false
+
+awsKeyspaces:
+  install: false
+  secretName: aws-keyspaces-credentials
+  host: cassandra.us-east-1.amazonaws.com
+
+publicCloud:
+
+# tolerations Example
+# policies:
+#   tolerations:
+#   - key: "key"
+#     operator: "Equal"
+#     value: "value"
+#     effect: "NoSchedule"
+
+tls:
+  enabled: false
+  optional: false
+  rootCASecretName: root-ca
+  rootCAFileName: ca.crt
+  privateKeyFileName: tls.key
+  signedCRTFileName: tls.crt
+  keystorePass: cassandra
+  generateSelfSignedCRTSecret: false
+  generateCerts:
+    enabled: false
+    clusterIssuerName: ""
+    duration: 365
+    subjectAlternativeName:
+      additionalDnsNames: []
+      additionalIpAddresses: []
+
+consulRegistration:
+  AclEnabled: false
+  AuthMethod: consul-k8s-auth-method
+  Enabled: false
+  #Host: consul-server.consul.svc
+  Host:
+  Port: 8500
+
+consulDiscoverySettings:
+  cassandra:
+    Check:
+      DeregisterCriticalServiceAfter: 100s
+      Interval: 10s
+      Timeout: 1s
+    Tags:
+    Meta:
+    Enabled: false
+    Name:
+
+dbaas:
+  install: true
+  pdb: false
+  apiVersion: v1
+  multiUsers: false
+  allDCTopologyStrategy: false
+  topologyStrategy: "{'class':'SimpleStrategy','replication_factor': 1 }"
+  dbaasStreamingRoleName: "streaming"
+  dbaasStreamingRoles:
+    - ALL
+  labels:
+    clusterName: "cassandra"
+  # Dbaas resources
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 64m
+      memory: 128Mi
+
+  # tlsEnabled: false
+  tls:
+    dbaasAdapterCASecretName: dbaas-adapter-certificate
+    duration: 365
+    subjectAlternativeName:
+      additionalDnsNames: []
+      additionalIpAddresses: []
+
+  # Mandatory docker image link
+  dockerImage: ghcr.io/netcracker/qubership-cassandra-dbaas-adapter:main
+
+  priorityClassName:
+
+  # Credentials
+  adapter:
+    username: dbaas-aggregator
+    password: dbaas-aggregator
+    secretName: dbaas-adapter-credentials
+  aggregator:
+    username: cluster-dba
+    password: Bnmq5567_PO
+    secretName: dbaas-aggregator-credentials
+    vaultPasswordPath:
+    dbaasAggregatorRegistrationAddress: "http://dbaas-aggregator.dbaas:8080"
+
+  # Key-value node labels.
+  # Example:
+  # nodeLabels:
+  #   label-name: value
+  #   second-label: another-value
+  nodeLabels:
+
+backupDaemon:
+  install: true
+  legacyMode: true
+  storageDirectory: /backup-storage
+  s3:
+    enabled: false
+    secretName: "cassandra-backup-s3-credentials"
+    sslVerify: false
+    sslSecretName: "backup-daemon-s3-tls-secret"
+    sslCert: ""
+    bucketName:
+    accessKeyId:
+    accessKeySecret:
+    endpointUrl:
+
+  pdb: false
+
+  tls:
+    backupDaemonCASecretName: backup-daemon-certificate
+    duration: 365
+    subjectAlternativeName:
+      additionalDnsNames: []
+      additionalIpAddresses: []
+
+  # Mandatory docker image link
+  dockerImage: ghcr.io/netcracker/qubership-cassandra-backup-daemon:main
+
+  priorityClassName:
+
+  username: backup
+  password: backup
+  secretName: cassandra-backup-api-credentials
+
+  # Key-value node labels.
+  # Example:
+  # nodeLabels:
+  #   label-name: value
+  #   second-label: another-value
+  nodeLabels:
+
+  resources:
+    requests:
+      cpu: 150m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 384Mi
+  storage:
+    # Requested size of volume
+    size: 5Gi
+    # Do not change!
+    mountSettings:
+      name: icarus
+      mountPath: /backup-storage # move to CR
+
+    # PV's storage class.
+    # Or as list of one value, to apply same class for each PVC
+    # Example:
+    # storageClasses:
+    #   - "nfs-storage-class"
+
+    # Set of selectors for PVC to bind.
+    # Example:
+    # matchLabelSelectors:
+    #   - first-selector: first-value
+    #     first-additional-selector: first-additional-value
+    matchLabelSelectors:
+
+  backupSchedule: '"0 0 * * *"'
+  granularBackupScheduledDbs: ""
+  granularBackupSchedule: '"0 3 * * *"'
+  evictionPolicy: "0/1h,3d/7d,1m/1m,1y/delete"
+  granularEvictionPolicy: "7d/delete"
+
+monitoringAgent:
+  metricCollector: prometheus
+  install: true
+  prometheus:
+    metricRelabelings:
+      cassandra:
+    alerts:
+      common:
+        cpuThreshold: 95
+        memThreshold: 95
+        usedSpaceThreshold: 50
+        podRestartPeriod: 6m
+        podRestartCount: 0
+      cassandra:
+        nodeUnavailableWaitFor: 5m
+      backup:
+        usedSpaceThreshold: 80
+        usedInodesThreshold: 80
+  # Key-value node labels.
+  # Example:
+  # nodeLabels:
+  #   label-name: value
+  #   second-label: another-value
+  nodeLabels:
+
+  monitoringInterval: 20s
+  collectionJitter: 0s
+  flushInterval: 20s
+  flushJitter: 5s
+  jolokiaDebug: "false"
+
+vaultRegistration:
+  tokenSecretName: vault-secret-services
+  dockerImage: banzaicloud/vault-env:1.19.0
+  enabled: false
+  path: kv
+  url:
+  role: cassandra-role
+  method: kubernetes
+  rotationPeriod: 86400
+  initContainerResources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 20m
+      memory: 64Mi
+
+robotTests:
+  install: false
+  dockerImage: ghcr.io/netcracker/qubership-cassandra-tests:main
+  tags: smokeORdbaas backup
+  args:
+    - run-robot
+  replicationFactor: 3
+  iteration: 1
+  attemptsNumber: 100
+  prometheusUrl: ""
+  nodeLabels:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# STORAGE_RWO_CLASS: test-storage-class

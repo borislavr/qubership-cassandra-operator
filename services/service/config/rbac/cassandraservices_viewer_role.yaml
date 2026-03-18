@@ -1,0 +1,27 @@
+# permissions for end users to view cassandrasupplservice.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: cassandrasupplservice-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: cassandra-services
+    app.kubernetes.io/part-of: cassandra-services
+    app.kubernetes.io/managed-by: kustomize
+  name: cassandrasupplservice-viewer-role
+rules:
+- apiGroups:
+  - netcracker.com
+  resources:
+  - cassandrasupplservice
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - netcracker.com
+  resources:
+  - cassandrasupplservice/status
+  verbs:
+  - get

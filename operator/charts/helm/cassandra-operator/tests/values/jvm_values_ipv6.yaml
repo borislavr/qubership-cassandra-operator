@@ -1,0 +1,4 @@
+ipV6: true
+cassandra:
+  jvm_options: |-
+    -Dcassandra.jvm.option=false

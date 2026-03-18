@@ -1,0 +1,16 @@
+{{- if and .Values.cassandra.install .Values.cassandra.commitlogArchiving.enabled }}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: cassandra-commiglog-archiving
+  labels:
+    app.kubernetes.io/part-of: {{ .Values.PART_OF }}
+    app.kubernetes.io/managed-by: {{ .Values.MANAGED_BY }}
+data:
+  config: >-
+    archive_command={{ .Values.cassandra.commitlogArchiving.archive_command }}
+
+    restore_command={{ .Values.cassandra.commitlogArchiving.restore_command }}
+    
+    restore_directories={{ .Values.cassandra.commitlogArchiving.restore_directories }}
+{{- end }}

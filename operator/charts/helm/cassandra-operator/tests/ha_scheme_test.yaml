@@ -1,0 +1,91 @@
+suite: Test Custom Resource Templating
+templates:
+  - cr_and_operator.yaml
+tests:
+  - it: should render CR fo HA scheme
+    documentIndex: 0
+    values:
+      - ./values/ha_values.yaml
+    asserts:
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].name
+          value: "dc1"
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].name
+          value: "dc2"
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[2].name
+          value: "dc3"
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].seeds
+          value: 1
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].seeds
+          value: 2
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[2].seeds
+          value: 3
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].volumes
+          value:
+            - cassandra-0
+            - cassandra-1
+            - cassandra-2
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].nodeLabels
+          value:
+            - kubernetes.io/hostname: dr311dev-node-left-1
+              first-additional-selector: first-additional-value
+            - kubernetes.io/hostname: dr311dev-node-left-2
+            - kubernetes.io/hostname: dr311dev-node-left-3
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[0].storageClasses
+          value:
+            - storageClass1
+            - storageClass2
+            - storageClass3
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[2].storage[0].matchLabelSelectors
+          value:
+            - first-selector: first-value
+              first-additional-selector: first-additional-value
+            - second-selector: second-value
+            - third-selector: third-value
+      # - equal:
+      #     path: spec.cassandra.deploymentSchema.dataCenters[2].storage[0].mountSettings
+      #     value:
+      #       name: data
+      #       mountPath: /var/lib/cassandra/data
+      #       subPath: data
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].waitPvcBound
+          value: true
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[0].waitPvcBound
+          value: false
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[2].storage[0].waitPvcBound
+          value: false
+      - equal:
+          path: spec.cassandra.configuration
+          value: |-
+            listen_interface_prefer_ipv6: true
+            rpc_interface_prefer_ipv6: true
+            seed_provider:
+              - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+                parameters:
+                  - seeds: "127.0.0.1"
+
+      - equal:
+          path: spec.policies.tolerations
+          value:
+            - key: "key1"
+              operator: "Equal"
+              value: "value1"
+              effect: "NoSchedule"
+              tolerationSeconds: 20
+            - key: "key2"
+              operator: "Equal"
+              value: "value2"
+              effect: "NoExecute"
+              tolerationSeconds: 20

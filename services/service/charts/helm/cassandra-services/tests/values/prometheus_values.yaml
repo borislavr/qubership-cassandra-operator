@@ -1,0 +1,38 @@
+cassandra:
+  install: true
+  username: cassandra
+  password: cassandra
+  deploymentSchema:
+    dataCenters:
+      - name: dc1
+        replicas: 1
+      - name: dc2
+        replicas: 13
+      - name: dc3
+        replicas: 3
+monitoringAgent:
+  install: true
+  metricCollector: prometheus
+  prometheus:
+    metricRelabelings:
+      cassandra:
+        - action: drop
+          regex: 'test.regex'
+          sourceLabels:
+            - __name__
+    alerts:
+      common:
+        cpuThreshold: 95
+        memThreshold: 95
+        usedSpaceThreshold: 80
+      backup:
+        usedSpaceThreshold: 80
+        usedInodesThreshold: 80
+  monitoringInterval: 10s
+  resources:
+    requests:
+      cpu: 201m
+      memory: 129Mi
+    limits:
+      cpu: 201m
+      memory: 257Mi

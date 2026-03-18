@@ -1,0 +1,19 @@
+operatorImage: artifactorycn.qubership.org:17008/product/prod.platform.databases_cassandra:master_latest_operator
+cassandra:
+  replicas: 3
+  dockerImage: "dummy"
+  resources:
+    requests:
+      cpu: 126m
+      memory: 250Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  storage:
+    type: provisioned
+    size: 5Gi
+    storageClass: "test"
+
+rbac.create: no
+serviceAccount.create: no
+crd.create: no

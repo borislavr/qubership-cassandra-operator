@@ -1,0 +1,82 @@
+{{- if .Values.reaper.install }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cassandra-reaper
+  labels:
+    app.kubernetes.io/part-of: {{ .Values.PART_OF }}
+    app.kubernetes.io/managed-by: {{ .Values.MANAGED_BY }}
+data:
+  config: |-
+    segmentCountPerNode: ${REAPER_SEGMENT_COUNT_PER_NODE}
+    repairParallelism: ${REAPER_REPAIR_PARALELLISM}
+    repairIntensity: ${REAPER_REPAIR_INTENSITY}
+    maxPendingCompactions: ${REAPER_MAX_PENDING_COMPACTIONS}
+    scheduleDaysBetween: ${REAPER_SCHEDULE_DAYS_BETWEEN}
+    repairRunThreadCount: ${REAPER_REPAIR_RUN_THREADS}
+    hangingRepairTimeoutMins: ${REAPER_HANGING_REPAIR_TIMEOUT_MINS}
+    storageType: ${REAPER_STORAGE_TYPE}
+    enableCrossOrigin: ${REAPER_ENABLE_CROSS_ORIGIN}
+    incrementalRepair: ${REAPER_INCREMENTAL_REPAIR}
+    blacklistTwcsTables: ${REAPER_BLACKLIST_TWCS}
+    enableDynamicSeedList: ${REAPER_ENABLE_DYNAMIC_SEED_LIST}
+    repairManagerSchedulingIntervalSeconds: ${REAPER_REPAIR_MANAGER_SCHEDULING_INTERVAL_SECONDS}
+    jmxConnectionTimeoutInSeconds: ${REAPER_JMX_CONNECTION_TIMEOUT_IN_SECONDS}
+    useAddressTranslator: ${REAPER_USE_ADDRESS_TRANSLATOR}
+    maxParallelRepairs: ${REAPER_MAX_PARALLEL_REPAIRS}
+    datacenterAvailability: ${REAPER_DATACENTER_AVAILABILITY}
+
+    autoScheduling:
+      enabled: ${REAPER_AUTO_SCHEDULING_ENABLED}
+      initialDelayPeriod: ${REAPER_AUTO_SCHEDULING_INITIAL_DELAY_PERIOD}
+      periodBetweenPolls: ${REAPER_AUTO_SCHEDULING_PERIOD_BETWEEN_POLLS}
+      timeBeforeFirstSchedule: ${REAPER_AUTO_SCHEDULING_TIME_BEFORE_FIRST_SCHEDULE}
+      scheduleSpreadPeriod: ${REAPER_AUTO_SCHEDULING_SCHEDULE_SPREAD_PERIOD}
+      adaptive: ${REAPER_AUTO_SCHEDULING_ADAPTIVE}
+      incremental: ${REAPER_AUTO_SCHEDULING_INCREMENTAL}
+      percentUnrepairedThreshold: ${REAPER_AUTO_SCHEDULING_PERCENT_UNREPAIRED_THRESHOLD}
+      excludedKeyspaces: ${REAPER_AUTO_SCHEDULING_EXCLUDED_KEYSPACES}
+      excludedClusters: ${REAPER_AUTO_SCHEDULING_EXCLUDED_CLUSTERS}
+
+    jmxPorts: ${REAPER_JMX_PORTS}
+
+    jmxmp:
+      enabled: ${REAPER_JMXMP_ENABLED}
+      ssl: ${REAPER_JMXMP_SSL}
+
+    logging:
+      level: ${REAPER_LOGGING_ROOT_LEVEL}
+      loggers: ${REAPER_LOGGING_LOGGERS}
+      appenders:
+        - type: console
+          logFormat: ${REAPER_LOGGING_APPENDERS_CONSOLE_LOG_FORMAT}
+          threshold: ${REAPER_LOGGING_APPENDERS_CONSOLE_THRESHOLD}
+
+    server:
+      type: default
+      applicationConnectors:
+        - type: ${REAPER_SERVER_TYPE}
+          port: ${REAPER_SERVER_APP_PORT}
+          bindHost: ${REAPER_SERVER_APP_BIND_HOST}
+          {{- if .Values.tls.enabled }}
+          keyStorePassword: {{ .Values.reaper.truststorePassword}}
+          keyStoreType: PKCS12
+          keyStorePath: /tmp/client.p12
+          {{- end }}
+      adminConnectors:
+        - type: http
+          port: ${REAPER_SERVER_ADMIN_PORT}
+          bindHost: ${REAPER_SERVER_ADMIN_BIND_HOST}
+      requestLog:
+        appenders: []
+
+    httpManagement:
+      enabled: ${REAPER_HTTP_MANAGEMENT_ENABLE}
+      mgmtApiMetricsPort: ${REAPER_MGMT_API_METRICS_PORT}
+      keystore: ${REAPER_HTTP_MANAGEMENT_KEYSTORE_PATH}
+      truststore: ${REAPER_HTTP_MANAGEMENT_TRUSTSTORE_PATH}
+
+    #
+
+  {{ .Values.cassandra.cassandra_env| indent 6 }}
+  {{- end }}

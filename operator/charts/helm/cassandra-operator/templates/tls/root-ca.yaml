@@ -1,0 +1,14 @@
+{{- if and (not .Values.tls.generateCerts.enabled ) (.Values.tls.enabled)}}
+kind: Secret
+apiVersion: v1
+metadata:
+  name: {{ .Values.tls.rootCASecretName }}
+  namespace: {{ .Release.Namespace }}
+  lables:
+    # {{- include "cassandra.defaultLabels" . | nindent 4 }}
+data:
+  {{ .Values.tls.rootCAFileName }}: {{ .Values.tls.certificates.ca_crt }}
+  {{ .Values.tls.privateKeyFileName }}: {{ .Values.tls.certificates.tls_key }}
+  {{ .Values.tls.signedCRTFileName }}: {{ .Values.tls.certificates.tls_crt }}
+type: Opaque
+{{ end }}

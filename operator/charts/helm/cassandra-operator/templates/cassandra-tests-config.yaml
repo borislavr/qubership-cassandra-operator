@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cassandra-tests-config
+  labels:
+    app: cassandra-tests
+data:
+  {{- if include "cassandra.monitoredImages" . }}
+  dd_images: {{ include "cassandra.monitoredImages" . }}
+  {{ else }}
+  dd_images: ""
+  {{ end }}

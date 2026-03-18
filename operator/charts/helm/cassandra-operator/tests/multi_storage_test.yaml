@@ -1,0 +1,81 @@
+suite: Test Custom Resource Templating
+templates:
+  - cr_and_operator.yaml
+tests:
+  - it: should render CR for Multiple Storage scheme
+    documentIndex: 0
+    values:
+      - ./values/separate_commitlog_values.yaml
+    asserts:
+      - equal:
+          path: spec.cassandra.configuration
+          value: |-
+            commitlog_directory: /var/lib/cassandra/customcommitlog
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].size
+          value:
+            - 2Gi
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].volumes
+          value:
+            - cassandra-0
+            - cassandra-1
+            - cassandra-2
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].nodeLabels
+          value:
+            - kubernetes.io/hostname: dr311dev-node-left-1
+            - kubernetes.io/hostname: dr311dev-node-left-2
+            - kubernetes.io/hostname: dr311dev-node-left-3
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].mountSettings
+          value:
+            name: data
+            mountPath: /var/lib/cassandra/data
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[1].size
+          value:
+            - 1Gi
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[1].volumes
+          value:
+            - cassandra-0-log
+            - cassandra-1-log
+            - cassandra-2-log
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[1].mountSettings
+          value:
+            name: commitlog
+            mountPath: /var/lib/cassandra/customcommitlog
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[0].size
+          value:
+            - 2Gi
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[0].volumes
+          value:
+            - cassandra-0
+            - cassandra-1
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[0].nodeLabels
+          value:
+            - kubernetes.io/hostname: dr311dev-node-left-1
+            - kubernetes.io/hostname: dr311dev-node-left-2
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[0].mountSettings
+          value:
+            name: data
+            mountPath: /var/lib/cassandra/data
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[1].size
+          value:
+            - 1Gi
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[1].storageClasses
+          value:
+            - manual
+      - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[1].storage[1].mountSettings
+          value:
+            name: commitlog
+            mountPath: /var/lib/cassandra/customcommitlog

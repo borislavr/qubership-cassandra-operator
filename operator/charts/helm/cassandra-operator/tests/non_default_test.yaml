@@ -1,0 +1,14 @@
+suite: Test Custom Resource Templating
+templates:
+  - cr_and_operator.yaml
+tests:
+  - it: should render CR with ipv6 block
+    documentIndex: 0
+    values:
+      - ./values/non_default_values.yaml
+    asserts:
+      - equal:
+          path: spec.cassandra.configuration
+          value: |-
+            listen_interface_prefer_ipv6: true
+            rpc_interface_prefer_ipv6: true

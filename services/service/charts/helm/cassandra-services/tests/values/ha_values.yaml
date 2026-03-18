@@ -1,0 +1,73 @@
+policies:
+  tolerations:
+    - key: "key1"
+      operator: "Equal"
+      value: "value1"
+      effect: "NoSchedule"
+      tolerationSeconds: 20
+    - key: "key2"
+      operator: "Equal"
+      value: "value2"
+      effect: "NoExecute"
+      tolerationSeconds: 20
+
+cassandra:
+  install: true
+  username: cassandra
+  password: cassandra
+  resources:
+    requests:
+      cpu: 151m
+      memory: 1201Mi
+    limits:
+      cpu: 252m
+      memory: 1502Mi
+  deploymentSchema:
+    dataCenters:
+      - name: dc1
+        replicas: 1
+      - name: dc2
+        replicas: 2
+      - name: dc3
+        replicas: 3
+ipV6: true
+backupDaemon:
+  install: true
+  resources:
+    requests:
+      cpu: 101m
+      memory: 50Mi
+    limits:
+      cpu: 201m
+      memory: 100Mi
+  storage:
+    nodeLabels:
+      - 'kubernetes.io/hostname': dr311dev-node-left-1
+    size: 1Gi
+    volumes:
+      - cassandra-backup
+    waitPvcBound: true
+
+dbaas:
+  install: true
+  resources:
+    requests:
+      cpu: 151m
+      memory: 701Mi
+    limits:
+      cpu: 601m
+      memory: 1001Mi
+monitoringAgent:
+  install: true
+robotTests:
+  install: false
+  tags:
+  replicationFactor: 3
+  nodeLabels:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

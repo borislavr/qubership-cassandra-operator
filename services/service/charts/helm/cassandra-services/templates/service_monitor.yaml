@@ -1,0 +1,375 @@
+{{- if eq (include "fromValuesThenEnvElseDefault" (dict "dotVar" .Values.monitoringAgent.install "envVar" .Values.MONITORING_ENABLED "default" true )) "true" }}
+  {{- if eq .Values.monitoringAgent.metricCollector "prometheus" }}
+{{- if and (.Values.cassandra.install) }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    # app.kubernetes.io/managed-by: monitoring-operator
+    app.kubernetes.io/name: "cassandra-exporter-service-monitor"
+    k8s-app: "cassandra-exporter-service-monitor"
+  name: "cassandra-exporter-service-monitor"
+spec:
+  endpoints:
+    - interval: {{ .Values.monitoringAgent.monitoringInterval }}
+      port: metrics
+      metricRelabelings:
+      {{- range $ind, $mr := .Values.monitoringAgent.prometheus.metricRelabelings.cassandra }}
+      - action: {{ $mr.action }}
+        {{- if $mr.regex}}
+        regex: {{ $mr.regex | squote }}
+        {{- end}}
+        {{- if $mr.sourceLabels }}
+        sourceLabels:
+        {{- range $key, $value := $mr.sourceLabels }}
+        - {{ $value }}
+        {{- end }}
+        {{- end }}
+        {{- if $mr.separator }}
+        separator: {{ $mr.separator | squote }}
+        {{- end }}
+        {{- if $mr.targetLabel }}
+        targetLabel: {{ $mr.targetLabel }}
+        {{- end }}
+        {{- if $mr.modulus }}
+        modulus: {{ $mr.modulus }}
+        {{- end }}
+        {{- if $mr.replacement }}
+        replacement: {{ $mr.replacement }}
+        {{- end }}
+      {{- end }}
+      - action: drop
+        regex: 'cassandra_table_bloom_filter_false_ratio'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_dropped_mutations_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_tombstones_scanned.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_client_request_view_replica_writes_successful_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_coordinator_latency_seconds_.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_client_request_cas_unfinished_commits_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_partition_size_minimum_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_node_operation_latency_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_cache_capacity_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_sstables_per_read_.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_jvm_threads_started_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_jvm_memory_pool_committed_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_jvm_memory_pool_initial_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_bloom_filter_disk_space_used_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_bloom_filter_false_positives_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_node_column_update_time_delta_seconds'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_row_cache_hits'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_memory_used_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_cache_entries'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_row_cache_misses'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_live_rows_scanned_.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_client_request_view_write_latency_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_keyspace_live_rows_scanned.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_storage_filesystem_usable_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_storage_filesystem_bytes_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_keyspace_effective_ownership_ratio'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_token_ownership_ratio'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_keyspace_column_update_time_delta_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_commit_log_size_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_dropped_messages_cross_node_latency_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_jvm_nio_buffer_pool_estimated_used_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_jvm_nio_buffer_pool_estimated_capacity_bytes_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_jvm_nio_buffer_pool_estimated_buffers'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_endpoint_phi'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_flushed_bytes_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_jvm_gc_estimated_collection_duration_seconds_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_memtable_switches'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_view_read_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_os_recent_cpu_load_ratio'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_os_free_swap_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_os_swap_bytes_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_os_free_memory_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_os_memory_bytes_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_process_cpu_seconds_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_process_vm_committed_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_process_open_file_descriptors'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_process_maximum_file_descriptors'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_os_1m_load_average'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_memtable_columns'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_buffer_pool_misses_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_estimated_partition_size_bytes.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_thread_pool_maximum_tasks'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_client_request_view_replica_writes_attempted_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_column_update_time_delta_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_dropped_messages_internal_latency_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_cache_hits_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_keyspace_sstables_per_read.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_pending_flushes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_buffer_pool_size_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_dropped_messages_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_client_request_cas_contentions.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_view_lock_acquisition_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_free_memtable_latency_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_keyspace_operation_latency_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_commit_log_segment_allocation_latency_seconds.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_estimated_columns.*'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_partition_size_mean_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_node_live_rows_scanned'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_estimated_partitions'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_node_tombstones_scanned'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_compression_ratio'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_cache_requests_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_repaired_ratio'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_table_compression_metadata_offheap_bytes'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_endpoint_generation'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_endpoint_downtime_seconds_total'
+        sourceLabels: [__name__]
+      - action: drop
+        regex: 'cassandra_compaction_completed_total'
+        sourceLabels: [__name__]
+# drop by labels
+      - sourceLabels: [quantile]
+        regex: '0\.999|0\.98|0\.75'
+        action: drop
+      - sourceLabels: [operation]
+        regex: 'cas_commit|cas_prepare|cas_propose|range_read'
+        action: drop
+  jobLabel: k8s-app
+  namespaceSelector:
+    matchNames:
+      - {{ default "cassandra" .Release.Namespace }}
+  selector:
+    matchLabels:
+      microservice: cassandra-metrics
+---
+{{- end }}
+{{- if eq (include  "fromValuesThenEnvElseDefault" (dict "dotVar" .Values.dbaas.install "envVar" .Values.DBAAS_ENABLED "default" true )) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/managed-by: monitoring-operator
+    app.kubernetes.io/name: "cassandra-dbaas-exporter-service-monitor"
+    k8s-app: "cassandra-dbaas-exporter-service-monitor"
+  name: "cassandra-dbaas-exporter-service-monitor"
+spec:
+  endpoints:
+    - interval: {{ .Values.monitoringAgent.monitoringInterval }}
+      path: /metrics
+      port: http
+  jobLabel: k8s-app
+  namespaceSelector:
+    matchNames:
+      - {{ default "cassandra" .Release.Namespace }}
+  selector:
+    matchLabels:
+      microservice: dbaas-cassandra-adapter
+---
+{{- end }}
+{{- if and (.Values.backupDaemon.install) }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/managed-by: monitoring-operator
+    app.kubernetes.io/name: "cassandra-backup-exporter-service-monitor"
+    k8s-app: "cassandra-backup-exporter-service-monitor"
+  name: "cassandra-backup-exporter-service-monitor"
+spec:
+  endpoints:
+    - interval: {{ .Values.monitoringAgent.monitoringInterval }}
+      path: /health/prometheus
+      port: http
+      scheme: {{ if .Values.tls.enabled }}https{{ else }}http{{ end }}
+      {{- if .Values.tls.enabled }}
+      tlsConfig:
+        serverName: cassandra-backup-daemon
+        ca:
+          secret:
+            key: ca.crt
+            name: {{ .Values.backupDaemon.tls.backupDaemonCASecretName }}
+        cert:
+          secret:
+            key: tls.crt
+            name: {{ .Values.backupDaemon.tls.backupDaemonCASecretName }}
+        keySecret:
+          key: tls.key
+          name: {{ .Values.backupDaemon.tls.backupDaemonCASecretName }}
+      {{- end }}
+  jobLabel: k8s-app
+  namespaceSelector:
+    matchNames:
+      - {{ default "cassandra" .Release.Namespace }}
+  selector:
+    matchLabels:
+      microservice: cassandra-backup-daemon
+---
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/managed-by: monitoring-operator
+    app.kubernetes.io/name: "cassandra-operator-exporter-service-monitor"
+    k8s-app: "cassandra-operator-exporter-service-monitor"
+  name: "cassandra-operator-exporter-service-monitor"
+spec:
+  endpoints:
+    - interval: {{ .Values.monitoringAgent.monitoringInterval }}
+      port: http
+  jobLabel: k8s-app
+  namespaceSelector:
+    matchNames:
+      - {{ default "cassandra" .Release.Namespace }}
+  selector:
+    matchLabels:
+      microservice: {{ .Values.operator.podName }}
+      {{ end }}
+  {{ end }}

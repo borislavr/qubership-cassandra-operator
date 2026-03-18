@@ -1,0 +1,121 @@
+policies:
+  tolerations:
+    - key: "key1"
+      operator: "Equal"
+      value: "value1"
+      effect: "NoSchedule"
+      tolerationSeconds: 20
+    - key: "key2"
+      operator: "Equal"
+      value: "value2"
+      effect: "NoExecute"
+      tolerationSeconds: 20
+
+cassandra:
+  install: true
+  username: cassandra
+  password: cassandra
+  resources:
+    requests:
+      cpu: 151m
+      memory: 1201Mi
+    limits:
+      cpu: 252m
+      memory: 1502Mi
+  deploymentSchema:
+    dataCenters:
+      - name: dc1
+        replicas: 1
+        seeds: 1
+        storage:
+          nodeLabels:
+            - kubernetes.io/hostname: dr311dev-node-left-1
+              first-additional-selector: first-additional-value
+            - kubernetes.io/hostname: dr311dev-node-left-2
+            - kubernetes.io/hostname: dr311dev-node-left-3
+          size: 2Gi
+          volumes:
+            - cassandra-0
+            - cassandra-1
+            - cassandra-2
+          waitPvcBound: true
+      - name: dc2
+        replicas: 2
+        seeds: 2
+        storage:
+          size: 1Gi
+          storageClasses:
+            - storageClass1
+            - storageClass2
+            - storageClass3
+          waitPvcBound: false
+
+      - name: dc3
+        replicas: 3
+        seeds: 3
+        storage:
+          size: 3Gi
+          matchLabelSelectors:
+            - first-selector: first-value
+              first-additional-selector: first-additional-value
+            - second-selector: second-value
+            - third-selector: third-value
+  configuration: |-
+    seed_provider:
+      - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+        parameters:
+          - seeds: "127.0.0.1"
+ipV6: true
+backupDaemon:
+  install: true
+  resources:
+    requests:
+      cpu: 101m
+      memory: 50Mi
+    limits:
+      cpu: 201m
+      memory: 100Mi
+  storage:
+    nodeLabels:
+      - 'kubernetes.io/hostname': dr311dev-node-left-1
+    size: 1Gi
+    volumes:
+      - cassandra-backup
+    waitPvcBound: true
+
+dbaas:
+  install: true
+  resources:
+    requests:
+      cpu: 151m
+      memory: 701Mi
+    limits:
+      cpu: 601m
+      memory: 1001Mi
+monitoringAgent:
+  install: true
+  metricCollector: prometheus
+  resources:
+    requests:
+      cpu: 201m
+      memory: 129Mi
+    limits:
+      cpu: 201m
+      memory: 257Mi
+  influxDB:
+    database: cloud_dr311_arbiter_openshift_sdntest_netcracker_com
+    host: 'http://10.101.182.90:8086'
+    user: admin
+    password: admin
+robotTests:
+  install: false
+  tags:
+  replicationFactor: 3
+  nodeLabels:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

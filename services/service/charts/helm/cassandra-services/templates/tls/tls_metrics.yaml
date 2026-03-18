@@ -1,0 +1,22 @@
+{{- if eq (include "fromValuesThenEnvElseDefault" (dict "dotVar" .Values.monitoringAgent.install "envVar" .Values.MONITORING_ENABLED "default" true )) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    prometheus: {{ .Release.Namespace }}-cassandra-tls-static-metrics-rules
+    role: record-rules
+  name: {{ .Release.Namespace }}-cassandra-tls-static-metrics-rules
+spec:
+  groups:
+    - name: {{ .Release.Namespace }}-{{ .Release.Name }}
+      rules:
+        {{- include "global.tlsStaticMetric" (dict "namespace" .Release.Namespace "application" "Cassandra" "service" "Cassandra" "enabledSsl" .Values.tls.enabled "secret" .Values.tls.rootCASecretName "certProvider" "cert-manager" "certificate" "cassandra-tls-certificate") | nindent 8 }}
+        {{- if .Values.backupDaemon.install }}
+        {{- include "global.tlsStaticMetric" (dict "namespace" .Release.Namespace "application" "Cassandra" "service" "Cassandra Backup Daemon" "enabledSsl" .Values.tls.enabled "secret" .Values.backupDaemon.tls.backupDaemonCASecretName "certProvider" "cert-manager" "certificate" "backup-daemon-tls-certificate") | nindent 8 }}
+        {{- end }}
+        {{- if eq (include "fromValuesThenEnvElseDefault" (dict "dotVar" .Values.dbaas.install "envVar" .Values.DBAAS_ENABLED "default" true )) "true" }}
+        {{- include "global.tlsStaticMetric" (dict "namespace" .Release.Namespace "application" "Cassandra" "service" "Cassandra Dbaas Adapter" "enabledSsl" (and .Values.tls.enabled (hasPrefix "https" .Values.dbaas.aggregator.dbaasAggregatorRegistrationAddress)) "secret" .Values.dbaas.tls.dbaasAdapterCASecretName "certProvider" "cert-manager" "certificate" "dbaas-tls-certificate") | nindent 8 }}
+        {{- end }}
+{{- end }}

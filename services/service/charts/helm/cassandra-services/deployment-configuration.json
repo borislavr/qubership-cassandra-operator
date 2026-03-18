@@ -1,0 +1,10 @@
+{
+  "statusPolling":{
+    "resourceType": "cassandrasupplservice.netcracker.com",
+    "resourceName": "cassandra-services",
+    "statusPath": "$.status.conditions[?(@.type=='Successful')]",
+    "statusPathFail": "$.status.conditions[?(@.type=='Failed')]",
+    "timeout": "${ CUSTOM_TIMEOUT_MIN ? CUSTOM_TIMEOUT_MIN : '60' }",
+    "delay": 5
+  }
+}

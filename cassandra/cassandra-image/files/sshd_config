@@ -1,0 +1,7 @@
+Port 2222
+HostKey /var/lib/cassandra/custom_ssh/ssh_host_rsa_key 
+AuthorizedKeysFile  /var/lib/cassandra/data/.ssh/authorized_keys 
+ChallengeResponseAuthentication no 
+UsePAM no 
+PidFile /var/lib/cassandra/custom_ssh/sshd.pid
+StrictModes no

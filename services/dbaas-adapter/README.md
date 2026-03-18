@@ -1,0 +1,1 @@
+# qubership-cassandra-dbaas-adapter

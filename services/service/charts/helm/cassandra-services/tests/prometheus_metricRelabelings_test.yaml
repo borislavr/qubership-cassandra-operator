@@ -1,0 +1,18 @@
+suite: Test Prometheus Service Monitor Relabeling
+templates:
+  - service_monitor.yaml
+tests:
+  - it: should render Service Monitor with additional metricRelabelings
+    documentIndex: 0
+    values:
+      - ./values/prometheus_values.yaml
+    asserts:
+      - equal:
+          path: spec.endpoints[0].metricRelabelings[0].action
+          value: drop
+      - equal:
+          path: spec.endpoints[0].metricRelabelings[0].regex
+          value: 'test.regex'
+      - equal:
+          path: spec.endpoints[0].metricRelabelings[0].sourceLabels[0]
+          value: __name__

@@ -1,0 +1,105 @@
+suite: Test Custom Resource Templating
+templates:
+  - cr_and_operator.yaml
+tests:
+  - it: should render CR fo HA scheme
+    documentIndex: 0
+    values:
+      - ./values/ha_values.yaml
+    asserts:
+      - equal:
+          path: spec.policies.tolerations
+          value:
+            - key: "key1"
+              operator: "Equal"
+              value: "value1"
+              effect: "NoSchedule"
+              tolerationSeconds: 20
+            - key: "key2"
+              operator: "Equal"
+              value: "value2"
+              effect: "NoExecute"
+              tolerationSeconds: 20
+  - it: should render CR with metricCollector prometheus
+    documentIndex: 0
+    values:
+      - ./values/prometheus_values.yaml
+    asserts:
+      - equal:
+          path: spec.monitoringAgent.metricCollector
+          value: prometheus
+      - equal:
+          path: spec.monitoringAgent.monitoringInterval
+          value: 10s
+  - it: should pass
+    documentIndex: 0
+    values:
+      - ./../values.yaml
+    set:
+      cassandra:
+        install: true
+        deploymentSchema:
+          dataCenters:
+            - name: dc1
+              replicas: 3
+            - name: dc2
+              replicas: 2
+      dbaas:
+        allDCTopologyStrategy: true
+    asserts:
+      - equal:
+          path: spec.dbaas.topologyStrategy
+          value: "{'class': 'NetworkTopologyStrategy', 'dc1':'3', 'dc2':'2'}"
+  - it: should pass even when user defined
+    documentIndex: 0
+    values:
+      - ./../values.yaml
+    set:
+      cassandra:
+        install: true
+        deploymentSchema:
+          dataCenters:
+            - name: dc
+              replicas: 5
+      dbaas:
+        allDCTopologyStrategy: true
+        topologyStrategy: "{'class': 'NetworkTopologyStrategy', 'dc':'3'}"
+    asserts:
+      - equal:
+          path: spec.dbaas.topologyStrategy
+          value: "{'class': 'NetworkTopologyStrategy', 'dc':'5'}"
+  - it: should be default
+    documentIndex: 0
+    values:
+      - ./../values.yaml
+    set:
+      cassandra:
+        install: true
+        deploymentSchema:
+          dataCenters:
+            - name: dc
+              replicas: 5
+      dbaas:
+        allDCTopologyStrategy: false
+    asserts:
+      - equal:
+          path: spec.dbaas.topologyStrategy
+          value: "{'class':'SimpleStrategy','replication_factor': 1 }"
+  - it: should be user defined
+    documentIndex: 0
+    values:
+      - ./../values.yaml
+    set:
+      cassandra:
+        install: true
+        deploymentSchema:
+          dataCenters:
+            - name: dc
+              replicas: 5
+      dbaas:
+        allDCTopologyStrategy: false
+        topologyStrategy: "{'class': 'NetworkTopologyStrategy', 'dc1':'3'}"
+    asserts:
+      - equal:
+          path: spec.dbaas.topologyStrategy
+          value: "{'class': 'NetworkTopologyStrategy', 'dc1':'3'}"

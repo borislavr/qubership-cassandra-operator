@@ -1,0 +1,10 @@
+publicCloud: GKE
+cassandra:
+  install: true
+  deploymentSchema:
+    dataCenters:
+      - name: dc1
+        replicas: 3
+        deploy: false
+      - name: dc2
+        replicas: 3

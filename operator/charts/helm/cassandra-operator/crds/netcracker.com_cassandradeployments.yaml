@@ -1,0 +1,368 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.6.2
+  creationTimestamp: null
+  name: cassandradeployments.netcracker.com
+spec:
+  group: netcracker.com
+  names:
+    kind: CassandraDeployment
+    listKind: CassandraDeploymentList
+    plural: cassandradeployments
+    singular: cassandradeployment
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Cassandra is the Schema for the cassandras API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              artifactDescriptorVersion:
+                type: string
+              cassandra:
+                properties:
+                  affinity:
+                    $ref: '#/definitions/k8s.io~1api~1core~1v1~0Affinity'
+                  auditLogEnabled:
+                    type: boolean
+                  commitlogArchiving:
+                    description: enables audit log in cassandra 3
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                  configuration:
+                    type: string
+                  deploymentSchema:
+                    properties:
+                      dataCenters:
+                        items:
+                          properties:
+                            broadcastAddress:
+                              items:
+                                type: string
+                              type: array
+                            clusterDomain:
+                              type: string
+                            deploy:
+                              type: boolean
+                            listenAddress:
+                              items:
+                                type: string
+                              type: array
+                            name:
+                              type: string
+                            racks:
+                              items:
+                                type: string
+                              type: array
+                            removeNodes:
+                              items:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              type: array
+                            replicas:
+                              type: integer
+                            rpcBroadcastAddress:
+                              items:
+                                type: string
+                              type: array
+                            rpcListenAddress:
+                              items:
+                                type: string
+                              type: array
+                            seedList:
+                              items:
+                                type: string
+                              type: array
+                            seeds:
+                              type: integer
+                            storage:
+                              items:
+                                properties:
+                                  emptyDir:
+                                    type: boolean
+                                  matchLabelSelectors:
+                                    items:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    type: array
+                                  mountSettings:
+                                    $ref: '#/definitions/k8s.io~1api~1core~1v1~0VolumeMount'
+                                  nodeLabels:
+                                    items:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    type: array
+                                  size:
+                                    items:
+                                      type: string
+                                    type: array
+                                  storageClasses:
+                                    items:
+                                      type: string
+                                    type: array
+                                  volumes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  waitPvcBound:
+                                    type: boolean
+                                type: object
+                              type: array
+                          type: object
+                        type: array
+                    type: object
+                  dockerImage:
+                    type: string
+                  envs:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  hostNetwork:
+                    type: boolean
+                  install:
+                    type: boolean
+                  password:
+                    type: string
+                  priorityClassName:
+                    type: string
+                  resources:
+                    $ref: '#/definitions/k8s.io~1api~1core~1v1~0ResourceRequirements'
+                  secretName:
+                    type: string
+                  smoketestKeyspace:
+                    type: string
+                  username:
+                    type: string
+                type: object
+              consulDiscoverySettings:
+                additionalProperties:
+                  properties:
+                    DirectChecks:
+                      type: boolean
+                    Enabled:
+                      type: boolean
+                  type: object
+                type: object
+              consulRegistration:
+                properties:
+                  AclEnabled:
+                    type: boolean
+                  AuthMethod:
+                    type: string
+                  Enabled:
+                    type: boolean
+                  Host:
+                    type: string
+                  Port:
+                    type: string
+                type: object
+              deletePVConUninstall:
+                type: boolean
+              deploymentVersion:
+                type: string
+              gocqlConnectTimeout:
+                type: integer
+              gocqlTimeout:
+                type: integer
+              imagePullPolicy:
+                $ref: '#/definitions/k8s.io~1api~1core~1v1~0PullPolicy'
+              instance:
+                type: string
+              ipV6:
+                type: boolean
+              managedBy:
+                type: string
+              partOf:
+                type: string
+              policies:
+                properties:
+                  tolerations:
+                    items:
+                      $ref: '#/definitions/k8s.io~1api~1core~1v1~0Toleration'
+                    type: array
+                type: object
+              reaper:
+                properties:
+                  dockerImage:
+                    type: string
+                  envs:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  ingressHost:
+                    type: string
+                  install:
+                    type: boolean
+                  port:
+                    type: integer
+                  resources:
+                    $ref: '#/definitions/k8s.io~1api~1core~1v1~0ResourceRequirements'
+                  secretName:
+                    type: string
+                  truststoreSecretName:
+                    type: string
+                  type:
+                    type: string
+                  username:
+                    type: string
+                type: object
+              recycler:
+                properties:
+                  install:
+                    type: boolean
+                  resources:
+                    $ref: '#/definitions/k8s.io~1api~1core~1v1~0ResourceRequirements'
+                type: object
+              securityContext:
+                $ref: '#/definitions/k8s.io~1api~1core~1v1~0PodSecurityContext'
+              serviceAccountName:
+                type: string
+              stopOnFailedResourceUpdate:
+                type: boolean
+              tls:
+                properties:
+                  enabled:
+                    description: if TLS encryption should be enabled
+                    type: boolean
+                  keystorePass:
+                    description: a password to Cassandra keystore.
+                    type: string
+                  optional:
+                    description: if TLS encryption is optional. If `true` then Cassandra
+                      cluster will accept TLS and non TLS connections.
+                    type: boolean
+                  privateKeyFileName:
+                    description: a key in the Kubernetes secret `tls.rootCASecretName`
+                      that holds the private key.
+                    type: string
+                  rootCAFileName:
+                    description: a key in the Kubernetes secret `tls.rootCASecretName`
+                      that holds the CA certificate.
+                    type: string
+                  rootCASecretName:
+                    description: a name of Kubernetes secret that holds a CA certificate,
+                      a Signed Cassandra sertificate and a private key.
+                    type: string
+                  signedCRTFileName:
+                    description: a key in the Kubernetes secret `tls.rootCASecretName`
+                      that holds the Signed Cassandra sertificate.
+                    type: string
+                type: object
+              vaultDBEngine:
+                properties:
+                  allowedRoles:
+                    type: string
+                  connectTimeout:
+                    type: string
+                  enabled:
+                    type: boolean
+                  name:
+                    type: string
+                  pluginName:
+                    type: string
+                  protocolVersion:
+                    type: integer
+                  role:
+                    type: string
+                required:
+                - enabled
+                type: object
+              vaultRegistration:
+                properties:
+                  cloudName:
+                    type: string
+                  cloudURL:
+                    type: string
+                  dockerImage:
+                    type: string
+                  enabled:
+                    type: boolean
+                  initContainerResources:
+                    $ref: '#/definitions/k8s.io~1api~1core~1v1~0ResourceRequirements'
+                  method:
+                    type: string
+                  namespacedPath:
+                    type: string
+                  path:
+                    type: string
+                  role:
+                    type: string
+                  rotationPeriod:
+                    type: integer
+                  token:
+                    type: string
+                  url:
+                    type: string
+                type: object
+              waitTimeout:
+                type: integer
+            required:
+            - cassandra
+            - gocqlConnectTimeout
+            - gocqlTimeout
+            - serviceAccountName
+            - vaultDBEngine
+            - vaultRegistration
+            type: object
+          status:
+            description: CassandraStatus defines the observed state of Cassandra
+            properties:
+              conditions:
+                description: 'Important: Run "make" to regenerate code after modifying
+                  this file'
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      type: boolean
+                    type:
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

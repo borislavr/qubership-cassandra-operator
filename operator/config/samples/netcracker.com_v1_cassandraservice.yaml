@@ -1,0 +1,12 @@
+apiVersion: netcracker.com/v1
+kind: CassandraService
+metadata:
+  labels:
+    app.kubernetes.io/name: cassandraservice
+    app.kubernetes.io/instance: cassandraservice-sample
+    app.kubernetes.io/part-of: cassandra-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: cassandra-operator
+  name: cassandraservice-sample
+spec:
+  # TODO(user): Add fields here

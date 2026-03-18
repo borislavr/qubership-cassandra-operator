@@ -1,0 +1,18 @@
+{{- if .Values.publicCloud }}
+{{- if eq .Values.publicCloud "GKE" }}
+{{- $namespace := .Release.Namespace }}
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: {{ $service := "" }}
+        {{- range $dcKey, $dc := .Values.cassandra.deploymentSchema.dataCenters }}
+          {{- if or ($dc.deploy) (eq ($dc.deploy | toString) "<nil>") }}
+            {{- $service = (printf "cassandra-dc-%v" $dc.name) }}
+          {{- end }}
+        {{- end }}
+        {{- $service }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+{{- end }}
+{{- end }}

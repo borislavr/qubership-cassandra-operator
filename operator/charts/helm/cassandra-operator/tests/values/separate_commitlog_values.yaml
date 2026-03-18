@@ -1,0 +1,46 @@
+cassandra:
+  install: true
+  username: cassandra
+  password: cassandra
+  configuration: |-
+    commitlog_directory: /var/lib/cassandra/customcommitlog
+  deploymentSchema:
+    dataCenters:
+      - name: dc1
+        deploy: true
+        replicas: 3
+        storage:
+          - nodeLabels:
+              - kubernetes.io/hostname: dr311dev-node-left-1
+              - kubernetes.io/hostname: dr311dev-node-left-2
+              - kubernetes.io/hostname: dr311dev-node-left-3
+            size: 2Gi
+            volumes:
+              - cassandra-0
+              - cassandra-1
+              - cassandra-2
+          - size: 1Gi
+            mountSettings:
+              name: commitlog
+              mountPath: /var/lib/cassandra/customcommitlog
+            volumes:
+              - cassandra-0-log
+              - cassandra-1-log
+              - cassandra-2-log
+      - name: dc2
+        replicas: 2
+        deploy: true
+        storage:
+          - nodeLabels:
+              - kubernetes.io/hostname: dr311dev-node-left-1
+              - kubernetes.io/hostname: dr311dev-node-left-2
+            size: 2Gi
+            volumes:
+              - cassandra-0
+              - cassandra-1
+          - size: 1Gi
+            mountSettings:
+              name: commitlog
+              mountPath: /var/lib/cassandra/customcommitlog
+            storageClasses:
+              - manual

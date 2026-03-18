@@ -1,0 +1,41 @@
+publicCloud: GKE
+cassandra:
+  install: true
+  username: cassandra
+  password: cassandra
+  deploymentSchema:
+    dataCenters:
+      - name: dc1
+        deploy: true
+        replicas: 3
+        seedList:
+          - 192.168.1.1
+          - 192.168.1.2
+          - 192.168.1.3
+        storage:
+          nodeLabels:
+            - kubernetes.io/hostname: dr311dev-node-left-1
+            - kubernetes.io/hostname: dr311dev-node-left-2
+            - kubernetes.io/hostname: dr311dev-node-left-3
+          size: 2Gi
+          volumes:
+            - cassandra-0
+            - cassandra-1
+            - cassandra-2
+      - name: dc2
+        replicas: 3
+        deploy: false
+        seedList:
+          - 192.168.2.1
+          - 192.168.2.2
+          - 192.168.2.3
+        storage:
+          nodeLabels:
+            - kubernetes.io/hostname: dr311dev-node-left-1
+            - kubernetes.io/hostname: dr311dev-node-left-2
+            - kubernetes.io/hostname: dr311dev-node-left-3
+          size: 2Gi
+          volumes:
+            - cassandra-0
+            - cassandra-1
+            - cassandra-2

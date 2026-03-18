@@ -1,0 +1,446 @@
+{{/* Generating deployment version each time */}}
+  {{- $deploymentVersion := randAlphaNum 10 -}}
+apiVersion: netcracker.com/v1alpha1
+kind: CassandraDeployment
+metadata:
+  name: cassandra-operator
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  partOf: {{ .Values.PART_OF }}
+  artifactDescriptorVersion: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION | trunc 63 | trimAll "-_." }}
+  managedBy: {{ .Values.MANAGED_BY }}
+  instance: {{ cat (coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME) "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}
+  deploymentVersion: {{ $deploymentVersion | quote }}
+  imagePullPolicy: {{ .Values.imagePullPolicy }}
+  recycler:
+    install: {{ .Values.recycler.install }}
+    resources:
+      limits:
+        memory: {{ .Values.recycler.resources.limits.memory }}
+        cpu: {{ .Values.recycler.resources.limits.cpu | quote }}
+      requests:
+        memory: {{ .Values.recycler.resources.requests.memory }}
+        cpu: {{ .Values.recycler.resources.requests.cpu | quote }}
+
+  securityContext:
+    fsGroup: {{ .Values.securityContext.fsGroup }}
+    runAsUser: {{ .Values.securityContext.runAsUser }}
+    runAsGroup: {{ .Values.securityContext.runAsGroup }}
+    {{- if .Values.securityContext.supplementalGroups }}
+    supplementalGroups:
+      {{- range $key, $value := .Values.securityContext.supplementalGroups }}
+      - {{ $value | quote }}
+        {{- end }}
+    {{- end }}
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  {{- if .Values.awsKeyspaces }}
+  awsKeyspaces:
+    install: {{ .Values.awsKeyspaces.install }}
+    secretName: {{ .Values.awsKeyspaces.secretName }}
+    host: {{ .Values.awsKeyspaces.host }}
+  {{- end }}
+  {{- if .Values.publicCloud }}
+  publicCloud: {{ .Values.publicCloud }}
+  {{- end }}
+  {{- if .Values.policies }}
+  policies:
+    {{- if .Values.policies.tolerations }}
+    tolerations:
+      {{- range $tKey, $t := .Values.policies.tolerations }}
+      - key: {{ $t.key }}
+        effect: {{ $t.effect }}
+        operator: {{ $t.operator }}
+        tolerationSeconds: {{ $t.tolerationSeconds }}
+        value: {{ $t.value }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  ipV6: {{ .Values.ipV6 }}
+  stopOnFailedResourceUpdate: {{ .Values.stopOnFailedResourceUpdate }}
+  waitTimeout: {{ .Values.waitTimeout }}
+  deletePVConUninstall: {{ .Values.deletePVConUninstall }}
+  gocqlConnectTimeout: {{ .Values.gocqlConnectTimeout }}
+  gocqlTimeout: {{ .Values.gocqlTimeout }}
+  serviceAccountName: {{ .Values.serviceAccountName }}
+
+  reaper:
+    install: {{ .Values.reaper.install }}
+    dockerImage: {{template "find_image" (dict "deployName" "dockerReaper" "SERVICE_NAME" "cassandra-reaper" "vals" .Values "default" .Values.reaper.dockerImage) }}
+    {{- if .Values.reaper.ingressHost }}
+    ingressHost: {{ .Values.reaper.ingressHost }}
+    {{- end }}
+    port: {{ if .Values.tls.enabled }}8443{{ else }}8080{{ end }}
+    type: {{ if .Values.tls.enabled }}https{{ else }}http{{ end }}
+    username: {{ .Values.reaper.username | quote }}
+    secretName: {{ .Values.reaper.secretName }}
+    truststoreSecretName: {{ .Values.reaper.truststoreSecretName }}
+    {{- if .Values.reaper.envs }}
+    envs:
+      {{- range $key, $value := .Values.reaper.envs }}
+      {{ $key | quote }}: {{ $value | quote }}
+      {{- end }}
+    {{- end }}
+    resources:
+      requests:
+        cpu: {{ .Values.reaper.resources.requests.cpu | quote }}
+        memory: {{ .Values.reaper.resources.requests.memory }}
+      limits:
+        cpu: {{ .Values.reaper.resources.limits.cpu | quote }}
+        memory: {{ .Values.reaper.resources.limits.memory }}
+
+  {{- if .Values.tls.enabled }}
+  tls:
+    enabled: {{ .Values.tls.enabled }}
+    optional: {{ .Values.tls.optional }}
+    rootCASecretName: {{ .Values.tls.rootCASecretName }}
+    rootCAFileName: {{ .Values.tls.rootCAFileName }}
+    privateKeyFileName: {{ .Values.tls.privateKeyFileName }}
+    signedCRTFileName: {{ .Values.tls.signedCRTFileName }}
+    keystorePass: {{ .Values.tls.keystorePass }}
+  {{- end }}
+
+  cassandra:
+    install: {{ .Values.cassandra.install }}
+    smoketestKeyspace: {{ .Values.cassandra.smoketestKeyspace }}
+    hostNetwork: {{ .Values.cassandra.hostNetwork }}
+    dockerImage: {{template "find_image" (dict "deployName" "cassandra" "SERVICE_NAME" "cassandra" "vals" .Values "default" .Values.cassandra.dockerImage) }}
+    auditLogEnabled: {{ .Values.cassandra.auditLogEnabled }}
+    {{- if .Values.cassandra.priorityClassName }}
+    priorityClassName: {{ .Values.cassandra.priorityClassName | quote }}
+    {{- end }}
+    {{- if .Values.cassandra.affinity }}
+    affinity:
+      {{- toYaml .Values.cassandra.affinity | nindent 6 }}
+    {{- end }}
+    username: {{template "fromEnv" (dict "envName" .Values.INFRA_CASSANDRA_USERNAME "default" .Values.cassandra.username) }}
+    secretName: {{ .Values.cassandra.secretName }}
+    {{ template "getCassandraResourcesForProfile" (dict "envVar" .Values.CASSANDRA_PROFILE "dotVar" .Values.global.profile "values" .Values) }}
+    {{- if .Values.cassandra.envs }}
+    envs:
+      {{- range $key, $value := .Values.cassandra.envs }}
+      {{ $key | quote }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+
+    deploymentSchema:
+      dataCenters:
+        {{- $root := . -}}
+        {{- range $dcKey, $dc := .Values.cassandra.deploymentSchema.dataCenters }}
+        - name: {{ $dc.name }}
+          clusterDomain: {{if $dc.clusterDomain }}{{ $dc.clusterDomain }}{{ else }}cluster.local{{ end }}
+          deploy: {{if or ($dc.deploy) (eq ($dc.deploy | toString) "<nil>") }}true{{ else }}false{{ end }}
+          replicas: {{template "fromEnv" (dict "envName" $root.Values.INFRA_CASSANDRA_REPLICAS "default" $dc.replicas) }}
+          {{- if $dc.seeds }}
+          seeds: {{ $dc.seeds }}
+          {{- end }}
+          {{- if $dc.seedList }}
+          seedList:
+            {{- range $key, $value := $dc.seedList }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if $dc.removeNodes }}
+          removeNodes:
+          {{- range $key, $value := $dc.removeNodes }}
+            {{- range $k, $v := $value }}
+            - {{ $k }}: {{ $v }}
+            {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if $dc.racks }}
+          racks:
+            {{- range $key, $value := $dc.racks }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if $dc.storage }}
+          storage:
+          {{- if kindIs "slice" $dc.storage -}}
+            {{- range $key, $storage := $dc.storage -}}
+            {{include "nosql.cassandra.storage" (dict "dc" $dc "storage" $storage "dotEnvSc" $root.Values.STORAGE_RWO_CLASS ) | indent 12 }}
+            {{- end -}}
+          {{- else -}}
+            {{include "nosql.cassandra.storage" (dict "dc" $dc "storage" $dc.storage "dotEnvSc" $root.Values.STORAGE_RWO_CLASS ) | indent 12 }}
+          {{- end -}}
+          {{- end }}
+          {{- if and ($dc.externalAddress) (not $dc.broadcastAddress) (not $dc.rpcBroadcastAddress) }}
+          broadcastAddress:
+            {{- range $key, $value := $dc.externalAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          rpcBroadcastAddress:
+            {{- range $key, $value := $dc.externalAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if and ($dc.internalAddress) (not $dc.listenAddress) (not $dc.rpcListenAddress) }}
+          listenAddress:
+            {{- range $key, $value := $dc.internalAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          rpcListenAddress:
+            {{- range $key, $value := $dc.internalAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if and ($dc.broadcastAddress) (not $dc.externalAddress) }}
+          broadcastAddress:
+            {{- range $key, $value := $dc.broadcastAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if and ($dc.listenAddress) (not $dc.internalAddress) }}
+          listenAddress:
+            {{- range $key, $value := $dc.listenAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if and ($dc.rpcBroadcastAddress) (not $dc.externalAddress) }}
+          rpcBroadcastAddress:
+            {{- range $key, $value := $dc.rpcBroadcastAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if and ($dc.rpcListenAddress) (not $dc.internalAddress) }}
+          rpcListenAddress:
+            {{- range $key, $value := $dc.rpcListenAddress }}
+            - {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+    {{- end }}
+{{- if .Values.cassandra.commitlogArchiving }}
+    commitlogArchiving:
+      enabled: {{ .Values.cassandra.commitlogArchiving.enabled }}
+{{- end }}
+    configuration: |-
+{{- if .Values.ipV6 }}
+      listen_interface_prefer_ipv6: true
+      rpc_interface_prefer_ipv6: true
+{{- end }}
+{{ .Values.cassandra.configuration | indent 6 }}
+
+  {{- if .Values.vaultRegistration }}
+  vaultRegistration:
+    dockerImage: {{template "find_image" (dict "deployName" "dockerVaultRegistration" "SERVICE_NAME" "vault-env" "vals" .Values "default" .Values.vaultRegistration.dockerImage) }}
+    enabled: {{ .Values.vaultRegistration.enabled }}
+    {{- if .Values.vaultRegistration.enabled }}
+    path: {{template "ifEnvThenDefault" (dict "envName" .Values.CLOUD_PUBLIC_HOST "then" (printf "secret/nc-%s/%s/%s" .Values.CLOUD_PUBLIC_HOST .Release.Namespace .Values.serviceAccountName) "default" .Values.vaultRegistration.path ) }} 
+    method: {{template "ifEnvThenDefault" (dict "envName" .Values.CLOUD_PUBLIC_HOST "then" (printf "nc-%s_%s" .Values.CLOUD_PUBLIC_HOST .Release.Namespace ) "default" .Values.vaultRegistration.method ) }} 
+    url: {{template "fromEnv" (dict "envName" .Values.VAULT_ADDR "default" .Values.vaultRegistration.url) }}
+    role: {{ .Values.serviceAccountName }}
+    rotationPeriod: {{ .Values.vaultRegistration.rotationPeriod }}
+    initContainerResources:
+      requests:
+        cpu: {{ .Values.vaultRegistration.initContainerResources.requests.cpu }}
+        memory: {{ .Values.vaultRegistration.initContainerResources.requests.memory }}
+      limits:
+        cpu: {{ .Values.vaultRegistration.initContainerResources.limits.cpu }}
+        memory: {{ .Values.vaultRegistration.initContainerResources.limits.memory }}
+    {{- end }}
+  {{- end }}
+  
+  vaultDBEngine:
+    name: {{template "ifEnvThenDefault" (dict "envName" .Values.CLOUD_PUBLIC_HOST "then" (printf "nc-%s_%s_cassandra" .Values.CLOUD_PUBLIC_HOST .Release.Namespace ) "default" (printf "%s_%s" .Values.vaultDBEngine.name .Release.Namespace) ) }} 
+    enabled: {{ .Values.vaultRegistration.enabled }}
+    pluginName: {{ .Values.vaultDBEngine.pluginName }}
+    protocolVersion: {{ .Values.vaultDBEngine.protocolVersion }}
+    allowedRoles: {{ .Values.vaultDBEngine.allowedRoles }}
+    role: {{template "ifEnvThenDefault" (dict "envName" .Values.CLOUD_PUBLIC_HOST "then" (printf "nc-%s_%s_%s_%s" .Values.CLOUD_PUBLIC_HOST .Release.Namespace .Values.serviceAccountName .Values.cassandra.username ) "default" (printf "nc-%s_%s" .Release.Namespace .Values.serviceAccountName ) ) }}
+    connectTimeout: {{ .Values.vaultDBEngine.connectTimeout | quote }}
+
+status: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.operator.podName }}
+  labels:
+    name: {{ .Values.SERVICE_NAME }}
+    app.kubernetes.io/name: {{ .Values.SERVICE_NAME }}
+    app.kubernetes.io/instance: {{ cat (coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME) "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}
+    app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION | trunc 63 | trimAll "-_." }}
+    app.kubernetes.io/component: 'backend'
+    app.kubernetes.io/part-of: {{ .Values.PART_OF }}
+    app.kubernetes.io/managed-by: {{ .Values.MANAGED_BY }}
+    app.kubernetes.io/technology: 'go' 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: {{ .Values.operator.podName }}
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.operator.podName }}
+        app.kubernetes.io/name: {{ .Values.SERVICE_NAME }}
+        app.kubernetes.io/instance: {{ cat (coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME) "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}
+        app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION | trunc 63 | trimAll "-_." }}
+        app.kubernetes.io/component: 'backend'
+        app.kubernetes.io/part-of: {{ .Values.PART_OF }}
+        app.kubernetes.io/managed-by: {{ .Values.MANAGED_BY }}
+        app.kubernetes.io/technology: 'go' 
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      priorityClassName: {{ .Values.operator.priorityClassName | quote }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if .Values.vaultRegistration.enabled }}
+      initContainers:
+        - name: operator-init
+          image: {{ template "find_image" (dict "deployName" "operator_init" "SERVICE_NAME" "operator_init" "vals" .Values "default" .Values.operator.initImage) }}
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          {{ if .Values.operator.priorityClassName }}
+          priorityClassName: {{ .Values.operator.priorityClassName }}
+          {{ end }}
+          resources:
+            limits:
+              cpu: 50m
+              memory: 50Mi
+            requests:
+              cpu: 50m
+              memory: 50Mi
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: VAULT_REGISTRATION_PATH
+              value: {{template "ifEnvThenDefault" (dict "envName" .Values.CLOUD_PUBLIC_HOST "then" (printf "secret/nc-%s/%s/%s" .Values.CLOUD_PUBLIC_HOST .Release.Namespace .Values.serviceAccountName) "default" .Values.vaultRegistration.path ) }} 
+            - name: KV_ENABLED
+              value: "False"
+            - name: NC_RUN_MIGRATION_FOR_DBAAS
+              value: "False"
+            - name: CLOUD_PUBLIC_HOST
+              value: {{ .Values.CLOUD_PUBLIC_HOST }}
+            - name: SERVICE_ACCOUNT
+              value: {{ .Values.serviceAccountName }} 
+            - name: CREATE_VAULT_AUTH
+              value: "True"
+            - name: VAULT_ADDR
+              value: {{template "fromEnv" (dict "envName" .Values.VAULT_ADDR "default" .Values.vaultRegistration.url) }}
+            - name: PAAS_PLATFORM
+              value: {{ default "kubernetes" .Values.vaultRegistration.paasPlatform }}
+            - name: PAAS_VERSION
+              value: {{ default "1.14" .Values.vaultRegistration.paasVersion | quote }}
+            - name: VAULT_SECRET_NAME
+              value: {{ .Values.vaultRegistration.tokenSecretName }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vaultRegistration.tokenSecretName }}
+                  key: token
+            - name: OPENSHIFT_SERVER
+            {{- if and .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
+              value: {{ printf "%s://%s:%.0f" .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
+            {{- else }}
+              value: "https://kubernetes.default:443"
+            {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.operator.podName }}
+          image: {{template "find_image" (dict "deployName" "dockerCassandraOperator" "SERVICE_NAME" "dockerCassandraOperator" "vals" .Values "default" .Values.operator.image) }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - name: healthz
+              containerPort: 8081
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: {{ .Values.operator.resources.requests.cpu | quote }}
+              memory: {{ .Values.operator.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.operator.resources.limits.cpu | quote }}
+              memory: {{ .Values.operator.resources.limits.memory }}
+          livenessProbe:
+              httpGet:
+                path: /healthz
+                port: 8081
+              initialDelaySeconds: 15
+              periodSeconds: 20
+              timeoutSeconds: 2
+              failureThreshold: 3
+          readinessProbe:
+              httpGet:
+                path: /readyz
+                port: 8081
+              initialDelaySeconds: 5
+              periodSeconds: 10
+              timeoutSeconds: 2
+              failureThreshold: 3
+          env:
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: CLOUD_PUBLIC_HOST
+              value: {{ .Values.CLOUD_PUBLIC_HOST }}
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: RECONCILIATION_DELAY_SECONDS
+              value: {{ .Values.crProcessingDelaySeconds | quote }}
+            - name: DEPLOYMENT_VERSION
+              value: {{ $deploymentVersion | quote }}
+            - name: DEBUG_LOG
+              value: {{ .Values.debugLog | quote }}
+          {{- if .Values.tls.enabled }}
+          volumeMounts: 
+            - name:      root-ca
+              mountPath: /usr/ssl/
+          {{- end }}
+      nodeSelector:
+        {{- range $key, $value := .Values.operator.nodeLabels }}
+        {{ $key | quote }}: {{ $value | quote }}
+      {{- end }}
+      {{- if .Values.operator.affinity }}
+      affinity:
+        {{- toYaml .Values.operator.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tls.enabled }}
+      volumes:
+      - name: root-ca
+        projected:
+          sources:
+            - secret:
+                name: {{ .Values.tls.rootCASecretName }}
+                items:
+                  - key: {{ .Values.tls.rootCAFileName }}
+                    path: {{ .Values.tls.rootCAFileName }}
+                  - key: {{ .Values.tls.signedCRTFileName }}
+                    path: {{ .Values.tls.signedCRTFileName }}
+                  - key: {{ .Values.tls.privateKeyFileName }}
+                    path: {{ .Values.tls.privateKeyFileName }}
+      {{- end }}
+      {{- if .Values.policies }}
+      tolerations:
+        {{- range $tKey, $t := .Values.policies.tolerations }}
+        - key: {{ $t.key }}
+          operator: {{ $t.operator }}
+          value: {{ $t.value }}
+          effect: {{ $t.effect }}
+          tolerationSeconds: {{ $t.tolerationSeconds }}
+      {{- end }}
+  {{- end }}

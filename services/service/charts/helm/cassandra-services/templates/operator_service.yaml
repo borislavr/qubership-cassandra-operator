@@ -1,0 +1,18 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: cassandra-operator
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+    name: {{ .Values.operator.name }}
+    app.kubernetes.io/name: {{ .Values.operator.name }}
+    microservice: cassandra-operator
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8069
+      targetPort: 8069
+  selector:
+    name: {{ .Values.operator.podName }}
+  type: ClusterIP

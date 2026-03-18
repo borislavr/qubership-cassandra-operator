@@ -1,0 +1,30 @@
+{{- if and .Values.tls.enabled .Values.tls.generateCerts.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cassandra-tls-certificate
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.tls.rootCASecretName }}
+  duration: {{ default 365 .Values.tls.generateCerts.duration | mul 24 }}h
+  commonName: cassandra-cn
+  isCA: true
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  dnsNames:
+{{ ( include "cassandra.certDnsNames" . | indent 4 ) }}
+  ipAddresses:
+{{ ( include "common.certIpAddresses" . | indent 4) }}
+  issuerRef:
+    group: cert-manager.io
+  {{- if .Values.tls.generateCerts.clusterIssuerName }}
+    name: {{ .Values.tls.generateCerts.clusterIssuerName }}
+    kind: ClusterIssuer
+  {{- else }}
+    name: cassandra-tls-issuer
+    kind: Issuer
+  {{- end }}
+{{- end }}

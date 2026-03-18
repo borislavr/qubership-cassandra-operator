@@ -1,0 +1,20 @@
+{{- if and .Values.createIngress (include "fromValuesThenEnvElseDefault" (dict "dotVar" .Values.dbaas.install "envVar" .Values.DBAAS_ENABLED "default" true )) .Values.CLOUD_PUBLIC_HOST }}
+apiVersion: {{ if .Capabilities.APIVersions.Has "networking.k8s.io/v1" }}"networking.k8s.io/v1"{{ else }}"networking.k8s.io/v1beta1"{{ end }}
+kind: Ingress
+metadata:
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+  name: cassandra-swagger
+spec:
+  rules:
+    - host: {{ printf "%s-dbaas-adapter-swagger.%s" .Release.Namespace  .Values.CLOUD_PUBLIC_HOST }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dbaas-cassandra-adapter
+                port:
+                  number: 8080
+{{ end }}

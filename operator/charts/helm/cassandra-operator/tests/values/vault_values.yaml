@@ -1,0 +1,10 @@
+vaultRegistration:
+  enabled: true
+  path: kv
+  url: some_vault_url
+  role: cassandra-role
+  method: kubernetes
+  rotationPeriod: 86400
+  cloudURL: http://cloud.url.com
+  cloudName: cloud_name
+  namespacedPath: nc_namespace_cloud_name

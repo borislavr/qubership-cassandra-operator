@@ -1,0 +1,11 @@
+{{- if  (.Values.cassandra.install) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cassandra-major-version
+  labels:
+    app.kubernetes.io/part-of: {{ .Values.PART_OF }}
+    app.kubernetes.io/managed-by: {{ .Values.MANAGED_BY }}
+data:
+  majorVersion: "4" 
+{{ end }}

@@ -1,0 +1,29 @@
+suite: Test Custom Resource Templating
+templates:
+  - cr_and_operator.yaml
+tests:
+  - it: should use .Values storage class
+    documentIndex: 0
+    set:
+      cassandra:
+        deploymentSchema:
+          dataCenters:
+            - name: dc1
+              replicas: 3
+              seeds: 2
+              storage:
+                size: 5Gi
+                storageClasses:
+                  - testSc
+    asserts:
+       - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].storageClasses
+          value: ["testSc"]
+  - it: should use STORAGE_RWO_CLASS storage class
+    documentIndex: 0
+    set:
+      STORAGE_RWO_CLASS: local-path
+    asserts:
+       - equal:
+          path: spec.cassandra.deploymentSchema.dataCenters[0].storage[0].storageClasses
+          value: ["local-path"]

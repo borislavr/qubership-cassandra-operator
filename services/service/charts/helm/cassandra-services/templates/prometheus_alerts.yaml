@@ -1,0 +1,175 @@
+{{- if eq (include "fromValuesThenEnvElseDefault" (dict "dotVar" .Values.monitoringAgent.install "envVar" .Values.MONITORING_ENABLED "default" true )) "true" }}
+  {{- if eq .Values.monitoringAgent.metricCollector "prometheus" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    {{- include "cassandra.defaultLabels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    prometheus: cassandra-prometheus-exporter
+    role: alert-rules
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+  name: prometheus-cassandra-rules
+spec:
+  groups:
+    - name: {{ .Release.Namespace }}-{{ .Release.Name}}
+      rules:
+        - alert: Cassandra pod is not Running
+          expr: sum(kube_pod_status_phase{exported_namespace="{{ .Release.Namespace }}", exported_pod=~"cassandra[0-9].*", phase!="Running"} or kube_pod_status_ready{exported_namespace="{{ .Release.Namespace }}", exported_pod=~"cassandra[0-9].*", condition="false"}) by (exported_pod) > 0
+          for: {{ .Values.monitoringAgent.prometheus.alerts.cassandra.nodeUnavailableWaitFor }}
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "Cassandra pod is not Running"
+        - alert: Cassandra pods count is lower than expected
+          expr: count(sum(kube_pod_status_phase{exported_namespace="{{ .Release.Namespace }}", exported_pod=~"cassandra[0-9].*"} * 0) by (exported_pod) or vector(0)) - 1 < {{ $sum := 0 }}
+            {{- range $dcKey, $dc := .Values.cassandra.deploymentSchema.dataCenters }}
+              {{- $sum = add $sum $dc.replicas }}
+              {{- if $dc.removeNodes }}
+                {{- $rmLen = len $dc.removeNodes }}
+                {{- $sum = sub $sum $rmLen }}
+              {{- end }}
+            {{- end }}
+            {{- $sum }}
+          for: {{ .Values.monitoringAgent.prometheus.alerts.cassandra.nodeUnavailableWaitFor }}
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "Cassandra pods count is lower than expected"
+        - alert: Unavailable exceptions count over 5 min
+          expr: rate(cassandra_client_request_unavailable_exceptions_total{namespace="{{ .Release.Namespace }}"}[5m]) > 0
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "Number of unavailable exceptions over 5 min"
+        - alert: Cassandra disk space usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.common.usedSpaceThreshold }} percents
+          expr: label_replace(sum(cassandra_table_disk_space_bytes{namespace="{{ .Release.Namespace }}",cassandra_datacenter=~"dc.*",pod=~"cassandra[0-9]-[0-9]"} + cassandra_table_snapshots_size_bytes_total{namespace="{{ .Release.Namespace }}",cassandra_datacenter=~"dc.*",pod=~"cassandra[0-9]-[0-9]"})by (pod), "needed_pod", "$1", "pod", "(.*)") / on (needed_pod) (label_replace(kube_persistentvolumeclaim_resource_requests_storage_bytes{exported_namespace="{{ .Release.Namespace }}", persistentvolumeclaim=~"cassandra-data.*"} *on (persistentvolumeclaim) group_left(exported_pod) (kube_pod_spec_volumes_persistentvolumeclaims_info{exported_namespace="{{ .Release.Namespace }}", persistentvolumeclaim=~"cassandra-data.*"}),"needed_pod", "$1", "exported_pod", "(.*)" )) > 0.{{ .Values.monitoringAgent.prometheus.alerts.common.usedSpaceThreshold }}
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            summary: Cassandra disk space usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.common.usedSpaceThreshold }} percents
+            description: Cassandra disk space usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.common.usedSpaceThreshold }} percents
+        - alert: Client Write Failures count
+          expr: rate(cassandra_client_request_failures_total{namespace="{{ .Release.Namespace }}", operation="write"}[5m]) > 0
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "Number of write failures encountered over 5 minutes. A write failure is a non-timeout exception encountered during a write request."
+        - alert: Client Read Failures count
+          expr: rate(cassandra_client_request_failures_total{namespace="{{ .Release.Namespace }}", operation="read"}[5m]) > 0
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "Number of read failures encountered over 5 minutes. A read failure is a non-timeout exception encountered during a read request."
+        - alert: JVM memory heap usage
+          expr: avg(cassandra_jvm_memory_pool_used_bytes{namespace="{{ .Release.Namespace }}"}) by (pod)/avg(cassandra_jvm_memory_pool_maximum_bytes{namespace="{{ .Release.Namespace }}"}) by (pod) > 0.8
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: Cassandra heap usage currently greater then 80% of available capacity. Please investigate and if need be increase total capacity'
+        - alert: Cassandra CPU Usage
+          annotations:
+            summary: Some of Cassandra pods CPU load is higher than {{ .Values.monitoringAgent.prometheus.alerts.common.cpuThreshold }} percents
+            description: Cassandra CPU load is higher than {{ .Values.monitoringAgent.prometheus.alerts.common.cpuThreshold }} percents
+          expr: '(
+               label_replace(
+                 max(rate(container_cpu_usage_seconds_total{image!="",container!~"POD|",pod=~".*",namespace="{{ .Release.Namespace }}"}[1m]))
+                 by (pod, container), "needed_pod", "$1", "pod", "(.*)")
+             )
+                / on(needed_pod, container)
+             (
+                label_replace(max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}",exported_pod=~".*"}) by (exported_pod, container) , "needed_pod", "$1", "exported_pod", "(.*)")
+             ) > {{ .Values.monitoringAgent.prometheus.alerts.common.cpuThreshold }} / 100'
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        - alert: Cassandra Memory Usage
+          annotations:
+            summary: Some of Cassandra pods memory usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.common.memThreshold }} percents
+            description: Cassandra memory usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.common.memThreshold }} percents
+          expr: '(
+               label_replace(
+                 sum(container_memory_working_set_bytes{pod=~".*",namespace="{{ .Release.Namespace }}",image!="",container!~"POD|"}) by (pod, container),
+                "needed_pod", "$1", "pod", "(.*)")
+             )
+                / on(needed_pod, container)
+             (
+                label_replace(avg(kube_pod_container_resource_limits_memory_bytes{exported_namespace="{{ .Release.Namespace }}",exported_pod=~".*"}) by (exported_pod, container), "needed_pod", "$1", "exported_pod", "(.*)")
+             ) > {{ .Values.monitoringAgent.prometheus.alerts.common.memThreshold }} / 100'
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+{{- if eq (include "fromValuesThenEnvElseDefault" (dict "dotVar" .Values.dbaas.install "envVar" .Values.DBAAS_ENABLED "default" true )) "true" }}
+        - alert: DBaaS Adapter is down
+          expr: increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}", container=~"dbaas-cassandra-adapter"}[{{ .Values.monitoringAgent.prometheus.alerts.common.podRestartPeriod }}]) > {{ .Values.monitoringAgent.prometheus.alerts.common.podRestartCount }}
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "DBaaS Adapter is down"
+{{- end }}
+{{- if and (.Values.backupDaemon.install) }}
+        - alert: Backup Daemon is down
+          expr: increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}", container=~"cassandra-backup-daemon"}[{{ .Values.monitoringAgent.prometheus.alerts.common.podRestartPeriod }}]) > {{ .Values.monitoringAgent.prometheus.alerts.common.podRestartCount }}
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "Backup Daemon is down"
+        - alert: Backup Daemon uses more than {{ .Values.monitoringAgent.prometheus.alerts.backup.usedSpaceThreshold }} % of disk space
+          annotations:
+            summary: Backup Daemon disk space usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.backup.usedSpaceThreshold }} percents
+            description: Backup Daemon disk space usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.backup.usedSpaceThreshold }} percent
+          expr: backup_storage_size{namespace="{{ .Release.Namespace }}",job=~"cassandra-backup-daemon"} / backup_storage_space_total{namespace="{{ .Release.Namespace }}",job=~"cassandra-backup-daemon"} > 0.{{ .Values.monitoringAgent.prometheus.alerts.backup.usedSpaceThreshold }}
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        - alert: Backup Daemon uses more than {{ .Values.monitoringAgent.prometheus.alerts.backup.usedInodesThreshold }} % of available inodes
+          annotations:
+            summary: Backup Daemon inodes usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.backup.usedInodesThreshold }} percents
+            description: Backup Daemon inodes usage is higher than {{ .Values.monitoringAgent.prometheus.alerts.backup.usedInodesThreshold }} percent
+          expr: '(
+               label_replace(
+                 backup_storage_used_inodes{pod=~".*",namespace="{{ .Release.Namespace }}"},
+                "needed_pod", "$1", "pod", "(.*)")
+             )
+                / on(needed_pod)
+             (
+                label_replace(avg(backup_storage_inodes_total{namespace="{{ .Release.Namespace }}",pod=~".*"}) by (pod), "needed_pod", "$1", "pod", "(.*)")
+             ) > 0.{{ .Values.monitoringAgent.prometheus.alerts.backup.usedInodesThreshold }}'
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        - alert: Last backup failed
+          expr: backup_storage_last_failed{job="cassandra-backup-daemon",namespace="{{ .Release.Namespace }}"} > 0
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+          annotations:
+            description: "Last backup status is Failed"
+{{- end }}
+  {{ end }}
+{{ end }}

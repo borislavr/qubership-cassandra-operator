@@ -1,0 +1,29 @@
+## Default values for helm-chart.
+## This is a YAML-formatted file.
+## Declare variables to be passed into your templates.
+#
+
+tls:
+  enabled: false
+  optional: false
+  keystorePass: cassandra
+
+cassandra:
+  install: true
+  auditLogEnabled: false
+
+  commitlogArchiving:
+    enabled: false
+    archive_command: /bin/cp -f %path /var/lib/cassandra/data/cl_archives/%name
+    restore_command: /bin/cp -f %from %to
+    restore_directories: /var/lib/cassandra/data/cl_archives/
+
+   # Custom Cassandra configuration
+  configuration: |-
+
+  jvm_options: |-
+
+  cassandra_env: |-
+
+PART_OF: "cassandra"
+MANAGED_BY: "cassandra"
