@@ -1,11 +1,11 @@
 module github.com/Netcracker/qubership-cassandra-dbaas-adapter/go
 
-go 1.25.5
+go 1.25.8
 
 require (
-	github.com/Netcracker/qubership-dbaas-adapter-core v0.11.0
+	github.com/Netcracker/qubership-dbaas-adapter-core v0.11.1
 	github.com/gocql/gocql v1.7.0
-	github.com/gofiber/fiber/v2 v2.52.9
+	github.com/gofiber/fiber/v2 v2.52.11
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0

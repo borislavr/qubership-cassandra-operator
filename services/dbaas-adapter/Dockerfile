@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.8-alpine AS builder
 
 ENV GOSUMDB=off GOPRIVATE=github.com/Netcracker
 

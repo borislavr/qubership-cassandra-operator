@@ -1,6 +1,6 @@
 FROM eclipse-temurin:11-jre AS java
 
-FROM ghcr.io/netcracker/qubership-backup-daemon-go-debian:0.1.7
+FROM ghcr.io/netcracker/qubership-backup-daemon-go-debian:0.1.8
 
 RUN apt-get update && apt-get install -y \
         python3 \
@@ -27,8 +27,10 @@ RUN apt-get update && apt-get install -y \
         cassandra-driver \
         boto3 \
         jq \
-    && rm -rf /var/lib/apt/lists/* \
-    && sed -i "s/999/99/" /etc/group
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 999 cassandra && \
+    useradd -u 999 -g 999 -m cassandra
 
 COPY --from=java /opt/java/openjdk /opt/java/openjdk
 
