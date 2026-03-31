@@ -145,6 +145,10 @@ class Restore(object):
             # find keyspace backups on all hosts
             backups = [
                 x for x in host_archives if keyspace_name == x["keyspace"]]
+            if not backups:
+                raise FileNotFoundError(
+                    f"No backup found for keyspace: {keyspace_name}"
+                )
             keyspace_dropped = False
             for backup in backups:
                 path = backup["path"]

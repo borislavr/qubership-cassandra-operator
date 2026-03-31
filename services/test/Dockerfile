@@ -1,4 +1,4 @@
-FROM ghcr.io/netcracker/qubership-docker-integration-tests-debian:0.4.0
+FROM ghcr.io/netcracker/qubership-docker-integration-tests-debian:driver_fix
 
 ENV ROBOT_OUTPUT=${ROBOT_HOME}/output \
     DISTR_DIR=/tmp/deps
@@ -15,14 +15,19 @@ RUN set -x \
         gcc \
         python3-dev \
         libffi-dev \
+        passwd \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd -g 999 cassandra && \
+    useradd -u 999 -g cassandra -m -s /bin/bash cassandra
 
 RUN set -x \
     && pip3 install --no-cache-dir -r ${ROBOT_HOME}/requirements.txt
 
-USER root
-RUN chmod -R 777 ${ROBOT_HOME}
+RUN chown -R 999:999 ${ROBOT_HOME} \
+    && chmod -R 775 ${ROBOT_HOME}
+
+USER 999
 
 EXPOSE 8080
 VOLUME ["${ROBOT_HOME}"]
