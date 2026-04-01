@@ -188,6 +188,13 @@ func main() {
 			supports.ToMap(),
 			ctxLogger,
 			profiler, "")
+
+		prefix := fmt.Sprintf("/api/%s/dbaas/adapter/cassandra/databases/", apiVersion)
+		app.Put(prefix+":dbName/settings", dbAdminImpl.(*impl.CassandraDbAdministration).UpdateCassandraSettingsHandler)
+		app.Get("/api/version", func(c *fiber.Ctx) error {
+			return c.SendString(apiVersion)
+		})
+
 		return nil
 	}))
 }

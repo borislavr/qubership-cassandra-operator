@@ -1,14 +1,17 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/Netcracker/qubership-dbaas-adapter-core/pkg/utils"
+	"github.com/gofiber/fiber/v2"
 
 	"go.uber.org/zap"
 )
@@ -69,4 +72,26 @@ func ReadLabelsFile() map[string]string {
 	}
 	logger.Info(fmt.Sprintf("Labels: %v", labels))
 	return labels
+}
+
+func ValidateDbIdentifierParam(ctx context.Context, paramName string, paramValue string, pattern string) bool {
+	logger := utils.GetLogger(GetEnvBool("LOG_DEBUG", false))
+	if paramValue != "" {
+		matched, err := regexp.MatchString(pattern, paramValue)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Error during check %s", paramName), zap.Error(err))
+			return false
+		}
+
+		if !matched {
+			logger.Info(fmt.Sprintf("Provided %s does not meet the requirements", paramName))
+		}
+
+		return matched
+	}
+	return true
+}
+
+func SendInvalidParameterResponse(c *fiber.Ctx, paramName string, paramValue string, pattern string) error {
+	return c.Status(400).SendString(fmt.Sprintf("Invalid '%s' param provided: %s. '%s' param must comply to the pattern %s", paramName, paramValue, paramName, pattern))
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/Netcracker/qubership-dbaas-adapter-core/pkg/service"
 	"github.com/Netcracker/qubership-dbaas-adapter-core/pkg/utils"
 	"github.com/gocql/gocql"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -234,6 +235,46 @@ func (c *CassandraDbAdministration) getKeySpaceConnectionProperties(keyspaceName
 	return connectionProps
 }
 
+func (c *CassandraDbAdministration) UpdateCassandraSettingsHandler(ctx *fiber.Ctx) error {
+	logger := utils.AddLoggerContext(c.logger, context.Background())
+	logger.Info("Received request to update settings")
+	dbName := ctx.Params("dbName")
+
+	if !mUtils.ValidateDbIdentifierParam(context.Background(), "dbName", dbName, dbNameRegexpExpression) {
+		return mUtils.SendInvalidParameterResponse(ctx, "dbName", dbName, dbNameRegexpExpression)
+	}
+
+	var updateSettingsRequest cassandra.CassandraUpdateSettingsRequest
+	err := ctx.BodyParser(&updateSettingsRequest)
+	if err != nil {
+		logger.Error("Failed to parse request in update settings handler", zap.Error(err))
+		return ctx.Status(500).SendString(err.Error())
+	}
+	newReplication, okNew := updateSettingsRequest.NewSettings["replication"].(string)
+	if okNew {
+		c.sessionService.NewAutoCloseSession(func(sessionInterface cassandra.Session) interface{} {
+			// Ensure metadata table exists
+			if err := c.cassandraService.EnsureMetadataTable(ctx.Context(), sessionInterface, dbName); err != nil {
+				logger.Error("Failed to ensure metadata table exists", zap.Error(err))
+				return ctx.Status(500).SendString(err.Error())
+			}
+
+			// Upsert replication setting
+			if err := c.cassandraService.UpsertMetadataSetting(ctx.Context(), sessionInterface, dbName, "replication", newReplication); err != nil {
+				logger.Error("Failed to upsert replication metadata", zap.Error(err))
+				return ctx.Status(500).SendString(err.Error())
+			}
+
+			logger.Info("Replication settings successfully updated in metadata table")
+			return nil
+		})
+	} else {
+		logger.Warn("Replication key missing or invalid in new settings")
+	}
+
+	return ctx.Status(200).SendString("Update settings processed successfully")
+}
+
 func (c *CassandraDbAdministration) CreateDatabase(ctx context.Context, requestOnCreateDb dao.DbCreateRequest) (string, *dao.LogicalDatabaseDescribed, error) {
 	logger := utils.AddLoggerContext(c.logger, ctx)
 
@@ -278,7 +319,16 @@ func (c *CassandraDbAdministration) CreateDatabase(ctx context.Context, requestO
 			string(marshaledMeta)).Exec(true)
 
 		logger.Debug(fmt.Sprintf("Created metadata for %s keyspace", logicalDatabaseName))
+		replicationValue, ok := requestOnCreateDb.Settings[replicationKey].(string)
+		if ok {
+			sessionInterface.Query(
+				fmt.Sprintf("INSERT INTO %s.metadata (id, value) VALUES (?, ?)", logicalDatabaseName),
+				"replication",
+				strings.TrimSpace(replicationValue),
+			).Exec(true)
+		}
 
+		logger.Debug(fmt.Sprintf("Added settings for %s keyspace", logicalDatabaseName))
 		resources = append(resources, dao.DbResource{
 			Kind: mUtils.DbResourceKind,
 			Name: logicalDatabaseName,

@@ -16,6 +16,8 @@ type CassandraService interface {
 	GetRolesForKeyspace(ctx context.Context, session Session, keyspace string) (map[string]bool, error)
 	GetAllRoles(ctx context.Context, session Session) (map[string]bool, error)
 	DropResource(ctx context.Context, session Session, resourceKind, name string) error
+	EnsureMetadataTable(ctx context.Context, session Session, dbName string) error
+	UpsertMetadataSetting(ctx context.Context, session Session, dbName, key string, value string) error
 }
 
 type CassandraServiceImpl struct {
@@ -30,6 +32,25 @@ func (r *CassandraServiceImpl) executeStatement(ctx context.Context, session Ses
 
 	err := session.Query(stmt).Exec(false)
 	return err
+}
+
+func (r *CassandraServiceImpl) EnsureMetadataTable(ctx context.Context, session Session, dbName string) error {
+	cql := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s.metadata (
+			id text PRIMARY KEY,
+			value text
+		)`, dbName)
+
+	return r.executeStatement(ctx, session, cql)
+}
+
+func (r *CassandraServiceImpl) UpsertMetadataSetting(ctx context.Context, session Session, dbName, key string, value string) error {
+	query := fmt.Sprintf(
+		"INSERT INTO %s.metadata (id, value) VALUES (?, ?)",
+		dbName,
+	)
+
+	return session.Query(query, key, string(value)).Exec(true)
 }
 
 func (r *CassandraServiceImpl) DropResource(ctx context.Context, session Session, resourceKind, name string) error {
