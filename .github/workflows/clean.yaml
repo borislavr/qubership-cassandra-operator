@@ -18,25 +18,25 @@ jobs:
             context: ""
           - name: qubership-cassandra-operator-transfer
             context: ""
-          - name: qubership-cassandra-backup-daemon
+          - name: cassandra-docker-backup-daemon
             context: ""
-          - name: qubership-cassandra-dbaas-adapter
+          - name: cassandra-docker-dbaas-adapter
             context: ""
-          - name: qubership-cassandra-tests
+          - name: cassandra-docker-tests
             context: ""
-          - name: qubership-cassandra-supplementary
+          - name: cassandra-supplementary
             context: ""
-          - name: qubership-cassandra-supplementary-transfer
+          - name: cassandra-supplementary-transfer
             context: ""
-          - name: cassandra_4.1
+          - name: docker-cassandra_4.1
             context: ""
-          - name: cassandra_5.0
+          - name: docker-cassandra_5.0
             context: ""
-          - name: qubership-cassandra-transfer_4.1
+          - name: cassandra-docker-transfer_4.1
             context: ""
-          - name: qubership-cassandra-transfer_5.0
+          - name: cassandra-docker-transfer_5.0
             context: ""
-          - name: qubership-cassandra-reaper
+          - name: cassandra-docker-reaper
             context: ""
     steps:
       - name: Prepare Tag
