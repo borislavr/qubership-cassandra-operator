@@ -7,7 +7,7 @@ require (
 	github.com/Netcracker/qubership-credential-manager v0.0.11
 	github.com/Netcracker/qubership-nosqldb-operator-core v1.0.7
 	github.com/gocql/gocql v1.6.0
-	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/hashicorp/consul/api v1.32.1
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.0
