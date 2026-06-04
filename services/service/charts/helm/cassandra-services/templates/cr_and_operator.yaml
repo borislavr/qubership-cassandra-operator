@@ -470,6 +470,7 @@ spec:
               containerPort: 8081
               protocol: TCP
           securityContext:
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:

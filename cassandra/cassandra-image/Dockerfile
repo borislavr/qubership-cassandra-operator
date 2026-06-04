@@ -26,8 +26,9 @@ RUN apt-get update \
         openssl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd -g 999 cassandra \
- && groupadd -g 1001 appgroup
+RUN getent group 999 >/dev/null || groupadd -g 999 cassandra && \
+    getent group 1001 >/dev/null || groupadd -g 1001 appgroup && \
+    getent passwd 999 >/dev/null || useradd -u 999 -g 999 -m -s /bin/bash cassandra
 
 #RUN sed -i "s/999/99/" /etc/group
 
@@ -66,7 +67,10 @@ RUN mkdir -p /var/lib/cassandra \
 
 VOLUME /var/lib/cassandra
 
-ADD files/sshd_config /var/lib/cassandra/custom_ssh/
+RUN mkdir -p /opt/cassandra/backups/
+ADD files/sshd_config /opt/cassandra/backups/sshd_config_backup
+RUN cp -a $CASSANDRA_CONFIG_DIR/. /opt/cassandra/backups/conf_backup/
+
 ADD files/run.sh /
 
 EXPOSE 7000 7001 7199 9042 9160 2222 8778

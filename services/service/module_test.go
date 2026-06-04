@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	cqlMocks "github.com/Netcracker/qubership-cql-driver/mocks"
 	v1 "github.com/Netcracker/qubership-cassandra-supplementary/api/v1alpha1"
 	"github.com/Netcracker/qubership-cassandra-supplementary/pkg"
 	"github.com/Netcracker/qubership-cassandra-supplementary/pkg/utils"
+	cqlMocks "github.com/Netcracker/qubership-cql-driver/mocks"
 	"github.com/Netcracker/qubership-nosqldb-operator-core/pkg/constants"
 	"github.com/Netcracker/qubership-nosqldb-operator-core/pkg/core"
 	mTypes "github.com/Netcracker/qubership-nosqldb-operator-core/pkg/types"
@@ -464,6 +464,12 @@ func TestExecutionCheck(t *testing.T) {
 				assert.Equal(t, 1, len(backup.Spec.Template.Spec.InitContainers))
 				assert.Equal(t, []string{"/vault/vault-env"}, backup.Spec.Template.Spec.Containers[0].Command)
 
+				assert.Equal(t, "tmp", backup.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name)
+				assert.Equal(t, "/tmp", backup.Spec.Template.Spec.Containers[0].VolumeMounts[1].MountPath)
+
+				assert.Equal(t, "tmp", backup.Spec.Template.Spec.Volumes[1].Name)
+				assert.NotNil(t, backup.Spec.Template.Spec.Volumes[1].EmptyDir)
+
 				dbaas := &v1app.Deployment{}
 				err = client.Get(context.TODO(),
 					types.NamespacedName{Name: utils.DbaasName, Namespace: cs.nameSpace}, dbaas)
@@ -475,6 +481,12 @@ func TestExecutionCheck(t *testing.T) {
 				assert.Equal(t, []string{"/vault/vault-env"}, dbaas.Spec.Template.Spec.Containers[0].Command)
 				assert.Equal(t, []string{"/usr/local/bin/entrypoint"}, dbaas.Spec.Template.Spec.Containers[0].Args)
 
+				assert.Equal(t, "tmp", dbaas.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name)
+				assert.Equal(t, "/tmp", dbaas.Spec.Template.Spec.Containers[0].VolumeMounts[1].MountPath)
+
+				assert.Equal(t, "tmp", dbaas.Spec.Template.Spec.Volumes[1].Name)
+				assert.NotNil(t, dbaas.Spec.Template.Spec.Volumes[1].EmptyDir)
+
 				robotTest := &v1app.Deployment{}
 				err = client.Get(context.TODO(),
 					types.NamespacedName{Name: utils.Robot, Namespace: cs.nameSpace}, robotTest)
@@ -484,6 +496,12 @@ func TestExecutionCheck(t *testing.T) {
 				assert.Equal(t, 1, len(robotTest.Spec.Template.Spec.InitContainers))
 				assert.Equal(t, []string{"/vault/vault-env"}, robotTest.Spec.Template.Spec.Containers[0].Command)
 				assert.Equal(t, []string{"/docker-entrypoint.sh", "run-robot"}, robotTest.Spec.Template.Spec.Containers[0].Args)
+
+				assert.Equal(t, "tmp", robotTest.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+				assert.Equal(t, "/tmp", robotTest.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
+
+				assert.Equal(t, "tmp", robotTest.Spec.Template.Spec.Volumes[0].Name)
+				assert.NotNil(t, robotTest.Spec.Template.Spec.Volumes[0].EmptyDir)
 			}
 			cs.RunTestFunc = func() error {
 				return cs.executor.Execute(cs.ctx)

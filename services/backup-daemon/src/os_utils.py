@@ -162,3 +162,12 @@ def replace_uuid(schema_cql, keyspace_name, new_keyspace_name, generated_uuid):
     replace_in_file(schema_cql, keyspace_name, new_keyspace_name)
     replace_in_file(schema_cql, r'WITH ID =.*',
                     f"WITH ID = {generated_uuid}")
+
+
+def get_secret(path, fallback=""):
+    try:
+        with open(path, "r") as file:
+            value = file.read().strip()
+            return value if value else fallback
+    except Exception:
+        return fallback

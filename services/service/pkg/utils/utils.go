@@ -198,3 +198,7 @@ func IsTLSEnableForDBAAS(aggregatorRegistrationAddress string, tlsEnabled bool) 
 
 	return tlsEnabled
 }
+
+func SanitizeName(name string) string {
+	return strings.ReplaceAll(name, ".", "-")
+}

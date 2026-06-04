@@ -1,7 +1,5 @@
 *** Variables ***
 ${DBAAS_HOST}                                     %{DBAAS_HOST}
-${DBAAS_ADAPTER_USERNAME}                         %{DBAAS_ADAPTER_USERNAME}
-${DBAAS_ADAPTER_PASSWORD}                         %{DBAAS_ADAPTER_PASSWORD}
 ${DB_NAME}                                        dbaas_test
 ${ATTEMPTS_NUMBER}                                %{ATTEMPTS_NUMBER=100}
 

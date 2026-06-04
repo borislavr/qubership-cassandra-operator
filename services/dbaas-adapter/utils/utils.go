@@ -95,3 +95,16 @@ func ValidateDbIdentifierParam(ctx context.Context, paramName string, paramValue
 func SendInvalidParameterResponse(c *fiber.Ctx, paramName string, paramValue string, pattern string) error {
 	return c.Status(400).SendString(fmt.Sprintf("Invalid '%s' param provided: %s. '%s' param must comply to the pattern %s", paramName, paramValue, paramName, pattern))
 }
+
+func GetSecret(path string, fallback string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fallback
+	}
+
+	val := strings.TrimSpace(string(data))
+	if val == "" {
+		return fallback
+	}
+	return val
+}

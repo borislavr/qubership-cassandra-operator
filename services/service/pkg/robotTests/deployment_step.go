@@ -19,12 +19,53 @@ type RobotDeployment struct {
 }
 
 func (r *RobotDeployment) Execute(ctx core.ExecutionContext) error {
+
 	request := ctx.Get(constants.ContextRequest).(reconcile.Request)
 	spec := ctx.Get(constants.ContextSpec).(*v1.CassandraSupplService)
 	robot := spec.Spec.RobotTests
 	helperImpl := ctx.Get(utils.KubernetesHelperImpl).(core.KubernetesHelper)
 	credsManager := ctx.Get(utils.ContextCredsManager).(utils.CredsManagerI)
 	log := ctx.Get(constants.ContextLogger).(*zap.Logger)
+
+	// Secret volumes and mounts
+	secretVolumes := map[string]string{
+		spec.Spec.Cassandra.SecretName: "/var/run/secrets/cassandra",
+	}
+
+	if spec.Spec.Backup.Install {
+		secretVolumes[spec.Spec.Backup.SecretName] =
+			"/var/run/secrets/backup"
+	}
+
+	if spec.Spec.Dbaas.Install {
+		secretVolumes[spec.Spec.Dbaas.Adapter.SecretName] =
+			"/var/run/secrets/dbaas-adapter"
+	}
+
+	secretVolumeMode := int32(256)
+	volumes := []v12.Volume{}
+	volumeMounts := []v12.VolumeMount{}
+
+	for secretName, mountPath := range secretVolumes {
+
+		volumeName := utils.SanitizeName(secretName)
+
+		volumes = append(volumes, v12.Volume{
+			Name: volumeName,
+			VolumeSource: v12.VolumeSource{
+				Secret: &v12.SecretVolumeSource{
+					SecretName:  secretName,
+					DefaultMode: &secretVolumeMode,
+				},
+			},
+		})
+
+		volumeMounts = append(volumeMounts, v12.VolumeMount{
+			Name:      volumeName,
+			MountPath: mountPath,
+			ReadOnly:  true,
+		})
+	}
 
 	// Environment variable Start
 	envs := []v12.EnvVar{
@@ -45,8 +86,6 @@ func (r *RobotDeployment) Execute(ctx core.ExecutionContext) error {
 	envs = append(envs,
 		coreUtils.GetPlainTextEnvVar("CASSANDRA_HOST", core.OptionalString(spec.Spec.Cassandra.Host, fmt.Sprintf("%s.%s", utils.Cassandra, request.Namespace))),
 		coreUtils.GetPlainTextEnvVar("CASSANDRA_PORT", core.OptionalString(strconv.Itoa(spec.Spec.Cassandra.Port), "9042")),
-		coreUtils.GetSecretEnvVar("CASSANDRA_USERNAME", spec.Spec.Cassandra.SecretName, utils.Username),
-		coreUtils.GetSecretEnvVar("CASSANDRA_PASSWORD", spec.Spec.Cassandra.SecretName, utils.Password),
 		coreUtils.GetPlainTextEnvVar("TEST_KEYSPACES_REPLICATION_FACTOR", strconv.Itoa(robot.ReplicationFactor)),
 		coreUtils.GetPlainTextEnvVar("ATTEMPTS_NUMBER", strconv.Itoa(robot.AttemptsNumber)),
 		coreUtils.GetPlainTextEnvVar("PROMETHEUS_URL", robot.PrometheusUrl),
@@ -58,7 +97,7 @@ func (r *RobotDeployment) Execute(ctx core.ExecutionContext) error {
 		coreUtils.GetPlainTextEnvVar("CONFIG_NAME", "cassandra-tests-config"),
 		coreUtils.GetPlainTextEnvVar("SUPPLEMENTARY_CONFIG_NAME", "supplementary-tests-config"),
 
-		//todo better place or variables
+		// todo better place or variables
 		coreUtils.GetPlainTextEnvVar("STATUS_CUSTOM_RESOURCE_PATH", fmt.Sprintf("apps/v1/%s/deployments/robot-tests", request.Namespace)),
 		coreUtils.GetPlainTextEnvVar("STATUS_WRITING_ENABLED", "true"),
 	)
@@ -66,16 +105,12 @@ func (r *RobotDeployment) Execute(ctx core.ExecutionContext) error {
 	if spec.Spec.Backup.Install {
 		envs = append(envs,
 			coreUtils.GetPlainTextEnvVar("BACKUP_HOST", fmt.Sprintf("%s.%s.svc", utils.BackupDaemon, request.Namespace)),
-			coreUtils.GetSecretEnvVar("BACKUP_DAEMON_API_CREDENTIALS_USERNAME", spec.Spec.Backup.SecretName, utils.Username),
-			coreUtils.GetSecretEnvVar("BACKUP_DAEMON_API_CREDENTIALS_PASSWORD", spec.Spec.Backup.SecretName, utils.Password),
 		)
 	}
 
 	if spec.Spec.Dbaas.Install {
 		envs = append(envs,
 			coreUtils.GetPlainTextEnvVar("DBAAS_HOST", fmt.Sprintf("%s.%s.svc", utils.DbaasName, request.Namespace)),
-			coreUtils.GetSecretEnvVar("DBAAS_ADAPTER_USERNAME", spec.Spec.Dbaas.Adapter.SecretName, utils.Username),
-			coreUtils.GetSecretEnvVar("DBAAS_ADAPTER_PASSWORD", spec.Spec.Dbaas.Adapter.SecretName, utils.Password),
 		)
 	}
 
@@ -87,9 +122,15 @@ func (r *RobotDeployment) Execute(ctx core.ExecutionContext) error {
 		*robot.Resources,
 		robot.NodeLabels,
 		envs,
-		spec.Spec.RobotTests.Args)
+		spec.Spec.RobotTests.Args,
+		volumeMounts,
+		volumes,
+	)
 
-	err := credsManager.AddCredHashToPodTemplate([]string{spec.Spec.Cassandra.SecretName}, &dc.Spec.Template)
+	err := credsManager.AddCredHashToPodTemplate(
+		[]string{spec.Spec.Cassandra.SecretName},
+		&dc.Spec.Template,
+	)
 	if err != nil {
 		log.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", dc.Name), zap.Error(err))
 		return err
@@ -97,12 +138,29 @@ func (r *RobotDeployment) Execute(ctx core.ExecutionContext) error {
 
 	robotArgs := append(utils.RobotEntrypoint, spec.Spec.Args...)
 
-	coreUtils.VaultPodSpec(&dc.Spec.Template.Spec, robotArgs, spec.Spec.VaultRegistration)
-	utils.TLSClientSpecUpdate(&dc.Spec.Template.Spec, utils.RootCertPath, spec.Spec.TLS)
+	coreUtils.VaultPodSpec(
+		&dc.Spec.Template.Spec,
+		robotArgs,
+		spec.Spec.VaultRegistration,
+	)
 
-	err = helperImpl.DeleteDeploymentAndPods(dc.Name, request.Namespace, spec.Spec.WaitTimeout)
+	utils.TLSClientSpecUpdate(
+		&dc.Spec.Template.Spec,
+		utils.RootCertPath,
+		spec.Spec.TLS,
+	)
 
-	core.PanicError(err, log.Error, "RobotTests deployment config processing failed")
+	err = helperImpl.DeleteDeploymentAndPods(
+		dc.Name,
+		request.Namespace,
+		spec.Spec.WaitTimeout,
+	)
+
+	core.PanicError(
+		err,
+		log.Error,
+		"RobotTests deployment config processing failed",
+	)
 
 	labels := utils.BasicLabels{
 		AppName:       utils.Robot,
@@ -110,12 +168,26 @@ func (r *RobotDeployment) Execute(ctx core.ExecutionContext) error {
 		AppTechnology: "python",
 	}
 
-	err = utils.CreateRuntimeObjectContextWrapper(ctx, dc, dc.ObjectMeta, labels)
-	core.PanicError(err, log.Error, "RobotTests deployment config processing failed")
+	err = utils.CreateRuntimeObjectContextWrapper(
+		ctx,
+		dc,
+		dc.ObjectMeta,
+		labels,
+	)
+
+	core.PanicError(
+		err,
+		log.Error,
+		"RobotTests deployment config processing failed",
+	)
 
 	log.Debug("Waiting for robot tests ready")
 
-	err = helperImpl.WaitForTestsReady(dc.Name, dc.Namespace, spec.Spec.WaitTimeout)
+	err = helperImpl.WaitForTestsReady(
+		dc.Name,
+		dc.Namespace,
+		spec.Spec.WaitTimeout,
+	)
 
 	core.PanicError(err, log.Error, "RobotTests failed")
 

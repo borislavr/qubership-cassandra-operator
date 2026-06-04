@@ -1,6 +1,13 @@
 #!/bin/bash
 set -x
 set -e
+
+mkdir -p /var/lib/cassandra/custom_ssh
+cp /opt/cassandra/backups/sshd_config_backup /var/lib/cassandra/custom_ssh/sshd_config
+
+mkdir -p "$CASSANDRA_CONFIG_DIR"
+cp -r /opt/cassandra/backups/conf_backup/. "$CASSANDRA_CONFIG_DIR/"
+
 CASSANDRA_CONFIG=$CASSANDRA_CONFIG_DIR/cassandra.yaml
 
 cp --remove-destination ${CASSANDRA_INIT_CONFIG_DIR}/* ${CASSANDRA_CONFIG_DIR}/
@@ -80,11 +87,6 @@ rm -f $CASSANDRA_CONFIG_DIR/cassandra-topology.properties
 
 if [[ $TLS == "true" ]]; then
   rm -f /var/lib/cassandra/data/keystore.p12 && openssl pkcs12 -export -in $TLS_SIGNED -inkey $TLS_KEY -CAfile $TLS_CA -name "$HOST_NAME" -out /var/lib/cassandra/data/keystore.p12 -password pass:$TLS_PASS
-fi
-
-
-if ! whoami &>/dev/null; then
-    echo "cassandra:x:$(id -u):$(id -g):cassandra user:${CASSANDRA_HOME}:/bin/bash" >> /etc/passwd
 fi
 
 

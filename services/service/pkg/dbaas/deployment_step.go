@@ -28,6 +28,43 @@ func (r *DbaasDeployment) Execute(ctx core.ExecutionContext) error {
 	credsManager := ctx.Get(utils.ContextCredsManager).(utils.CredsManagerI)
 	tlsEnabled := utils.IsTLSEnableForDBAAS(spec.Spec.Dbaas.Aggregator.DbaasAggregatorRegistrationAddress, spec.Spec.TLS.Enabled)
 
+	secretVolumes := map[string]string{
+		spec.Spec.Cassandra.SecretName: "/var/run/secrets/cassandra",
+		dbaas.Adapter.SecretName:       "/var/run/secrets/dbaas-adapter",
+		dbaas.Aggregator.SecretName:    "/var/run/secrets/dbaas-aggregator",
+		utils.DbaasAdminRoleCreds:      "/var/run/secrets/dbaas-streaming",
+	}
+
+	if spec.Spec.Backup.Install {
+		secretVolumes[spec.Spec.Backup.SecretName] =
+			"/var/run/secrets/backup"
+	}
+
+	secretVolumeMode := int32(256)
+
+	volumes := []v12.Volume{}
+	volumeMounts := []v12.VolumeMount{}
+
+	for secretName, mountPath := range secretVolumes {
+
+		volumeName := utils.SanitizeName(secretName)
+
+		volumes = append(volumes, v12.Volume{
+			Name: volumeName,
+			VolumeSource: v12.VolumeSource{
+				Secret: &v12.SecretVolumeSource{
+					SecretName:  secretName,
+					DefaultMode: &secretVolumeMode,
+				},
+			},
+		})
+
+		volumeMounts = append(volumeMounts, v12.VolumeMount{
+			Name:      volumeName,
+			MountPath: mountPath,
+			ReadOnly:  true,
+		})
+	}
 	// Environment variable Start
 	envs := []v12.EnvVar{
 		{
@@ -43,8 +80,6 @@ func (r *DbaasDeployment) Execute(ctx core.ExecutionContext) error {
 	envs = append(envs,
 		coreUtils.GetPlainTextEnvVar("CASSANDRA_HOSTNAME", core.OptionalString(spec.Spec.Cassandra.Host, fmt.Sprintf("%s.%s", utils.Cassandra, request.Namespace))),
 		coreUtils.GetPlainTextEnvVar("CASSANDRA_PORT", core.OptionalString(strconv.Itoa(spec.Spec.Cassandra.Port), "9042")),
-		coreUtils.GetSecretEnvVar("CASSANDRA_USERNAME", spec.Spec.Cassandra.SecretName, utils.Username),
-		coreUtils.GetSecretEnvVar("CASSANDRA_PASSWORD", spec.Spec.Cassandra.SecretName, utils.Password),
 		coreUtils.GetPlainTextEnvVar("GOCQL_DEFAULT_KEYSPACE", core.OptionalString(spec.Spec.Cassandra.DefaultKeyspace, "system")),
 		coreUtils.GetPlainTextEnvVar("GOCQL_CONSISTENCY", core.OptionalString(spec.Spec.Cassandra.Consistency, "QUORUM")),
 		coreUtils.GetPlainTextEnvVar("TLS_ENABLED", strconv.FormatBool(spec.Spec.Cassandra.TLS)),
@@ -52,10 +87,6 @@ func (r *DbaasDeployment) Execute(ctx core.ExecutionContext) error {
 		coreUtils.GetPlainTextEnvVar("DBAAS_ADAPTER_ADDRESS", fmt.Sprintf("%s://%s.%s:%d", utils.GetHTTPProtocol(tlsEnabled), utils.DbaasName, request.Namespace, utils.GetHTTPPort(tlsEnabled))),
 		coreUtils.GetPlainTextEnvVar("DBAAS_AGGREGATOR_REGISTRATION_ADDRESS", dbaas.Aggregator.DbaasAggregatorRegistrationAddress),
 		coreUtils.GetPlainTextEnvVar("PORT", fmt.Sprint(utils.GetHTTPPort(tlsEnabled))),
-		coreUtils.GetSecretEnvVar("DBAAS_ADAPTER_USERNAME", dbaas.Adapter.SecretName, utils.Username),
-		coreUtils.GetSecretEnvVar("DBAAS_ADAPTER_PASSWORD", dbaas.Adapter.SecretName, utils.Password),
-		coreUtils.GetSecretEnvVar("DBAAS_AGGREGATOR_REGISTRATION_USERNAME", dbaas.Aggregator.SecretName, utils.Username),
-		coreUtils.GetSecretEnvVar("DBAAS_AGGREGATOR_REGISTRATION_PASSWORD", dbaas.Aggregator.SecretName, utils.Password),
 		coreUtils.GetPlainTextEnvVar("GOCQL_TIMEOUT", fmt.Sprint(spec.Spec.GocqlTimeout)),
 		coreUtils.GetPlainTextEnvVar("GOCQL_CONNECT_TIMEOUT", fmt.Sprint(spec.Spec.GocqlConnectTimeout)),
 		coreUtils.GetPlainTextEnvVar("VAULT_ENABLED", strconv.FormatBool(spec.Spec.VaultRegistration.Enabled)),
@@ -67,14 +98,10 @@ func (r *DbaasDeployment) Execute(ctx core.ExecutionContext) error {
 		coreUtils.GetPlainTextEnvVar("API_VERSION", dbaas.ApiVersion),
 		coreUtils.GetPlainTextEnvVar("MULTI_USERS_ENABLED", strconv.FormatBool(dbaas.MultiUsers)),
 		coreUtils.GetPlainTextEnvVar("CASSANDRA_DEFAULT_TOPOLOGY", dbaas.TopologyStrategy),
-		coreUtils.GetSecretEnvVar("DBAAS_STREAMING_ROLE_NAME", utils.DbaasAdminRoleCreds, utils.Name),
-		coreUtils.GetSecretEnvVar("DBAAS_STREAMING_ROLE_PERMISSIONS", utils.DbaasAdminRoleCreds, utils.Roles),
 	)
 
 	if spec.Spec.Backup.Install {
 		envs = append(envs,
-			coreUtils.GetSecretEnvVar("BACKUP_DAEMON_API_CREDENTIALS_USERNAME", spec.Spec.Backup.SecretName, utils.Username),
-			coreUtils.GetSecretEnvVar("BACKUP_DAEMON_API_CREDENTIALS_PASSWORD", spec.Spec.Backup.SecretName, utils.Password),
 			coreUtils.GetPlainTextEnvVar("BACKUP_DAEMON_ADDRESS", fmt.Sprintf("%s://cassandra-backup-daemon:%d", utils.GetHTTPProtocol(spec.Spec.TLS.Enabled), utils.GetHTTPPort(spec.Spec.TLS.Enabled))),
 		)
 	}
@@ -86,7 +113,9 @@ func (r *DbaasDeployment) Execute(ctx core.ExecutionContext) error {
 		dbaas.NodeLabels,
 		*dbaas.Resources,
 		envs,
-		utils.GetHTTPPort(tlsEnabled))
+		utils.GetHTTPPort(tlsEnabled),
+		volumeMounts,
+		volumes)
 
 	err := credsManager.AddCredHashToPodTemplate([]string{spec.Spec.Cassandra.SecretName}, &dc.Spec.Template)
 	if err != nil {

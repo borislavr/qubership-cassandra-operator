@@ -21,7 +21,6 @@ const Roles = "roles"
 
 const SSHSecret = "ssh-keys"
 
-
 const Microservice = "microservice"
 
 const TriesCount = "triesCount"

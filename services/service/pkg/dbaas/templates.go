@@ -13,10 +13,13 @@ func DbaasDeploymentTemplate(namespace string,
 	nodeSelector map[string]string,
 	resources v1.ResourceRequirements,
 	env []v1.EnvVar,
-	port int32) *v12.Deployment {
+	port int32,
+	volumeMounts []v1.VolumeMount,
+	volumes []v1.Volume) *v12.Deployment {
 
 	var replicas int32 = 1
 	allowPrivilegeEscalation := false
+	readOnlyRootFilesystem := true
 	dc := &v12.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      utils.DbaasName,
@@ -25,8 +28,8 @@ func DbaasDeploymentTemplate(namespace string,
 				utils.App:          utils.CassandraCluster,
 				utils.Microservice: utils.DbaasName,
 				utils.Name:         utils.DbaasName,
-				utils.AppPartOf:     "cassandra-services",
-				utils.AppManagedBy:	 "operator",
+				utils.AppPartOf:    "cassandra-services",
+				utils.AppManagedBy: "operator",
 			},
 		},
 		Spec: v12.DeploymentSpec{
@@ -53,6 +56,7 @@ func DbaasDeploymentTemplate(namespace string,
 									Drop: []v1.Capability{"ALL"},
 								},
 								AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+								ReadOnlyRootFilesystem:   &readOnlyRootFilesystem,
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -63,12 +67,15 @@ func DbaasDeploymentTemplate(namespace string,
 							},
 							Env:       env,
 							Resources: resources,
-							VolumeMounts: []v1.VolumeMount{
-								{
-									Name:      "dbaas-physical-databases-labels-mount",
-									MountPath: "/app/config",
+							VolumeMounts: append(
+								[]v1.VolumeMount{
+									{
+										Name:      "dbaas-physical-databases-labels-mount",
+										MountPath: "/app/config",
+									},
 								},
-							},
+								volumeMounts...,
+							),
 							LivenessProbe: &v1.Probe{
 								ProbeHandler: v1.ProbeHandler{
 									TCPSocket: &v1.TCPSocketAction{
@@ -96,22 +103,25 @@ func DbaasDeploymentTemplate(namespace string,
 						},
 					},
 					NodeSelector: nodeSelector,
-					Volumes: []v1.Volume{
-						{
-							Name: "dbaas-physical-databases-labels-mount",
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
-									LocalObjectReference: v1.LocalObjectReference{
-										Name: "nc-dbaas-physical-databases-labels",
+					Volumes: append(
+						[]v1.Volume{
+							{
+								Name: "dbaas-physical-databases-labels-mount",
+								VolumeSource: v1.VolumeSource{
+									ConfigMap: &v1.ConfigMapVolumeSource{
+										LocalObjectReference: v1.LocalObjectReference{
+											Name: "nc-dbaas-physical-databases-labels",
+										},
+										DefaultMode: func() *int32 {
+											mode := int32(420)
+											return &mode
+										}(),
 									},
-									DefaultMode: func() *int32 {
-										mode := int32(420) // Decimal representation of 0644
-										return &mode
-									}(),
 								},
 							},
 						},
-					},
+						volumes...,
+					),
 				},
 			},
 		},

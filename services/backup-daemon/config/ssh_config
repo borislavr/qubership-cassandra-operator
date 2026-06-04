@@ -5,4 +5,4 @@ Host *
   UserKnownHostsFile /dev/null
   User cassandra
   Port 2222
-  IdentityFile /opt/backup/.ssh/id_rsa
+  IdentityFile /var/run/secrets/ssh/privateKey

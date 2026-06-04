@@ -30,6 +30,46 @@ func (r *LegacyBackupDeployment) Execute(ctx core.ExecutionContext) error {
 	dcs := spec.Spec.Cassandra.DeploymentSchema.DataCenters
 	var hosts []string
 
+	secretVolumes := map[string]string{
+		spec.Spec.Cassandra.SecretName: "/var/run/secrets/cassandra",
+		backup.SecretName:              "/var/run/secrets/backup",
+		utils.SSHSecret:                "/var/run/secrets/ssh",
+	}
+
+	if spec.Spec.AWSKeyspaces.Install {
+		secretVolumes[spec.Spec.AWSKeyspaces.SecretName] = "/var/run/secrets/aws"
+	}
+
+	if backup.S3.Enabled {
+		secretVolumes[backup.S3.SecretName] = "/var/run/secrets/s3"
+	}
+
+	var volumes []v12.Volume
+	var volumeMounts []v12.VolumeMount
+
+	secretVolumeMode := int32(256)
+
+	for secretName, mountPath := range secretVolumes {
+
+		volumeName := utils.SanitizeName(secretName)
+
+		volumes = append(volumes, v12.Volume{
+			Name: volumeName,
+			VolumeSource: v12.VolumeSource{
+				Secret: &v12.SecretVolumeSource{
+					SecretName:  secretName,
+					DefaultMode: &secretVolumeMode,
+				},
+			},
+		})
+
+		volumeMounts = append(volumeMounts, v12.VolumeMount{
+			Name:      volumeName,
+			MountPath: mountPath,
+			ReadOnly:  true,
+		})
+	}
+
 	for _, dc := range dcs {
 		for replica := 0; replica < dc.Replicas; replica++ {
 			hosts = append(hosts, fmt.Sprintf("cassandra%d-0.cassandra.%s.svc.cluster.local", replica, request.Namespace))
@@ -43,9 +83,6 @@ func (r *LegacyBackupDeployment) Execute(ctx core.ExecutionContext) error {
 		envs = append(envs,
 			coreUtils.GetPlainTextEnvVar("EXTERNAL_RESTORE", "true"),
 			coreUtils.GetPlainTextEnvVar("AWS_RESTORE", "true"),
-			coreUtils.GetSecretEnvVar("AWS_ACCESS_KEY", spec.Spec.AWSKeyspaces.SecretName, utils.AccessKey),
-			coreUtils.GetSecretEnvVar("AWS_SECRET_KEY", spec.Spec.AWSKeyspaces.SecretName, utils.SecretKey),
-			coreUtils.GetSecretEnvVar("AWS_REGION", spec.Spec.AWSKeyspaces.SecretName, utils.Region),
 		)
 
 	} else {
@@ -63,11 +100,6 @@ func (r *LegacyBackupDeployment) Execute(ctx core.ExecutionContext) error {
 			coreUtils.GetPlainTextEnvVar("GRANULAR_EVICTION_POLICY", backup.GranularEvictionPolicy),
 			coreUtils.GetPlainTextEnvVar("STORAGE", backup.StorageDirectory),
 			coreUtils.GetPlainTextEnvVar("CASSANDRA_MAJOR_VERSION", cm.Data["majorVersion"]),
-			coreUtils.GetSecretEnvVar("SSH_PRIVATE_KEY", utils.SSHSecret, "privateKey"),
-			coreUtils.GetSecretEnvVar("CASSANDRA_USERNAME", spec.Spec.Cassandra.SecretName, utils.Username),
-			coreUtils.GetSecretEnvVar("CASSANDRA_PASSWORD", spec.Spec.Cassandra.SecretName, utils.Password),
-			coreUtils.GetSecretEnvVar("BACKUP_DAEMON_API_CREDENTIALS_USERNAME", backup.SecretName, utils.Username),
-			coreUtils.GetSecretEnvVar("BACKUP_DAEMON_API_CREDENTIALS_PASSWORD", backup.SecretName, utils.Password),
 			coreUtils.GetPlainTextEnvVar("CONNECT_TIMEOUT", fmt.Sprint(spec.Spec.GocqlConnectTimeout)),
 			coreUtils.GetPlainTextEnvVar("REQUEST_TIMEOUT", fmt.Sprint(spec.Spec.GocqlTimeout)),
 		)
@@ -76,8 +108,6 @@ func (r *LegacyBackupDeployment) Execute(ctx core.ExecutionContext) error {
 				coreUtils.GetPlainTextEnvVar("S3_ENABLED", strconv.FormatBool(backup.S3.Enabled)),
 				coreUtils.GetPlainTextEnvVar("S3_BUCKET", backup.S3.BucketName),
 				coreUtils.GetPlainTextEnvVar("S3_URL", backup.S3.EndpointUrl),
-				coreUtils.GetSecretEnvVar("S3_KEY_ID", backup.S3.SecretName, utils.Username),
-				coreUtils.GetSecretEnvVar("S3_KEY_SECRET", backup.S3.SecretName, utils.Password),
 			)
 			if backup.S3.SslVerify {
 				envs = append(envs, coreUtils.GetPlainTextEnvVar("S3_CERTS_PATH", "/s3Certs"))
@@ -111,7 +141,9 @@ func (r *LegacyBackupDeployment) Execute(ctx core.ExecutionContext) error {
 		backup.StorageDirectory,
 		backup.Storage.EmptyDir,
 		utils.GetHTTPPort(spec.Spec.TLS.Enabled),
-		utils.GetUriScheme(spec.Spec.TLS.Enabled))
+		utils.GetUriScheme(spec.Spec.TLS.Enabled),
+		volumeMounts,
+		volumes)
 
 	err := credsManager.AddCredHashToPodTemplate([]string{spec.Spec.Cassandra.SecretName}, &dc.Spec.Template)
 	if err != nil {

@@ -1,7 +1,5 @@
 *** Variables ***
 ${BACKUP_HOST}                                    %{BACKUP_HOST}
-${BACKUP_DAEMON_API_CREDENTIALS_USERNAME}         %{BACKUP_DAEMON_API_CREDENTIALS_USERNAME}
-${BACKUP_DAEMON_API_CREDENTIALS_PASSWORD}         %{BACKUP_DAEMON_API_CREDENTIALS_PASSWORD}
 ${SYSTEM_KEYSPACE_ERROR_TEXT}                     system keyspace is not user-modifiable
 ${BACKUP_ERROR_TEXT}                              Internal Server Error
 ${RESTORE_ERROR_TEXT}                             Wrong db names transferred via API

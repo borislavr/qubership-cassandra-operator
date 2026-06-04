@@ -1,17 +1,16 @@
 *** Variables ***
 ${DBAAS_HOST}                                     %{DBAAS_HOST}
-${DBAAS_ADAPTER_USERNAME}                         %{DBAAS_ADAPTER_USERNAME}
-${DBAAS_ADAPTER_PASSWORD}                         %{DBAAS_ADAPTER_PASSWORD}
 
 *** Settings ***
 Library  String
 Library	 Collections
 Library	 RequestsLibrary
 Library  OperatingSystem
-Library           ../lib/CassandraLibrary.py	${CASSANDRA_HOST}  ${CASSANDRA_USERNAME}  ${CASSANDRA_PASSWORD}  ${WAIT_TIMEOUT}
 
 *** Keywords ***
 Preparation dbaas shared
+    Load Secrets
+
     &{headers}=  Create Dictionary  Content-Type=application/json  Accept=application/json
     Set Suite Variable  ${headers}
 
@@ -35,6 +34,8 @@ Preparation dbaas shared
 
     @{connection_settings}=  Prepare Configuration For Dbaas Connection
     Create Session    dbaassession    ${connection_settings[0]}://${DBAAS_ADAPTER_USERNAME}:${DBAAS_ADAPTER_PASSWORD}@${DBAAS_HOST}:${connection_settings[1]}    verify=${connection_settings[2]}
+
+    Import Library  ${CURDIR}/../lib/CassandraLibrary.py  ${CASSANDRA_HOST}  ${CASSANDRA_USERNAME}  ${CASSANDRA_PASSWORD}  ${WAIT_TIMEOUT}
 
     ${dbaas_api_version}=    Get Dbaas Aggregator version
     Set Suite Variable  ${dbaas_api_version}

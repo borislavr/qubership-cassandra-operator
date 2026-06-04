@@ -12,9 +12,10 @@ from src import cassandra_client, os_utils
 CASSANDRA_HOME_BIN = "/opt/cassandra/bin"
 CASSANDRA_DATA_DIR = os.getenv(
     "CASSANDRA_DATA_DIR", "var/lib/cassandra/data")
-CASSANDRA_USERNAME = os.getenv('CASSANDRA_USERNAME')
-CASSANDRA_PASSWORD = os.getenv('CASSANDRA_PASSWORD')
 CASSANDRA_HOSTS = os.getenv('CASSANDRA_HOSTS')
+
+CASSANDRA_USERNAME = os_utils.get_secret("/var/run/secrets/cassandra/username")
+CASSANDRA_PASSWORD = os_utils.get_secret("/var/run/secrets/cassandra/password")
 
 
 class Restore(object):
@@ -25,8 +26,8 @@ class Restore(object):
         self.dbmap = dbmap
         self.need_restore_roles = os_utils.str_to_bool(
             restore_roles) if restore_roles is not None else False
-        self.username = os.getenv('CASSANDRA_USERNAME')
-        self.password = os.getenv('CASSANDRA_PASSWORD')
+        self.username = CASSANDRA_USERNAME
+        self.password = CASSANDRA_PASSWORD
         self.connect_timeout = os.getenv('CONNECT_TIMEOUT', 20)
         self.request_timeout = os.getenv('REQUEST_TIMEOUT', 20)
         self.tls_enabled = os_utils.str_to_bool(
@@ -236,7 +237,7 @@ def cluster_backup(databases, vault, tls_enabled, cassandra_username, cassandra_
         "ansible-playbook",
         "-vvv",
         "-i",
-        "/opt/backup/hosts",
+        "/opt/backup/cassandra_hosts/hosts",
         "/opt/backup/playbooks/backup.yaml",
         "--extra-vars",
         (

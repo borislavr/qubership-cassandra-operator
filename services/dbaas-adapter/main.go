@@ -31,15 +31,15 @@ func main() {
 	profiler := utils.GetEnvAsBool("PROFILER", false)
 	namespace := utils.GetEnv("NAMESPACE", "")
 	port := utils.GetEnvAsInt("PORT", mUtils.DefaultPort)
-	apiUser := utils.GetEnv("DBAAS_ADAPTER_USERNAME", "dbaas-adapter")
-	apiPass := utils.GetEnv("DBAAS_ADAPTER_PASSWORD", "dbaas-adapter")
+	apiUser := mUtils.GetSecret("/var/run/secrets/dbaas-adapter/username", "dbaas-adapter")
+	apiPass := mUtils.GetSecret("/var/run/secrets/dbaas-adapter/password", "dbaas-adapter")
 	apiVersion := utils.GetEnv("API_VERSION", "v1")
 	multiUserEnabled := utils.GetEnvAsBool("MULTI_USERS_ENABLED", false)
 	aggregatorAdapterAddress := utils.GetEnv("DBAAS_ADAPTER_ADDRESS", fmt.Sprintf("http://dbaas-%s-adapter.%s:8080", appName, namespace))
 	aggregatorRegistrationAddress := utils.GetEnv("DBAAS_AGGREGATOR_REGISTRATION_ADDRESS", "http://dbaas-aggregator.dbaas:8080")
 	aggregatorRegistrationIdentifier := utils.GetEnv("DBAAS_AGGREGATOR_PHYSICAL_DATABASE_IDENTIFIER", appName)
-	aggregatorRegistrationUser := utils.GetEnv("DBAAS_AGGREGATOR_REGISTRATION_USERNAME", "cluster-dba")
-	aggregatorRegistrationPass := utils.GetEnv("DBAAS_AGGREGATOR_REGISTRATION_PASSWORD", "Bnmq5567_PO")
+	aggregatorRegistrationUser := mUtils.GetSecret("/var/run/secrets/dbaas-aggregator/username", "cluster-dba")
+	aggregatorRegistrationPass := mUtils.GetSecret("/var/run/secrets/dbaas-aggregator/password", "Bnmq5567_PO")
 	aggregatorRegistrationDelay := utils.GetEnvAsInt("DBAAS_AGGREGATOR_REGISTRATION_FIXED_DELAY_MS", 150000)
 	aggregatorRegistrationRetryTime := utils.GetEnvAsInt("DBAAS_AGGREGATOR_REGISTRATION_RETRY_TIME_MS", 60000)
 	aggregatorRegistrationRetryDelay := utils.GetEnvAsInt("DBAAS_AGGREGATOR_REGISTRATION_RETRY_DELAY_MS", 5000)
@@ -50,8 +50,8 @@ func main() {
 	// DB Administration
 	cassandraHost := utils.GetEnv("CASSANDRA_HOSTNAME", fmt.Sprintf("cassandra.%s", namespace))
 	cassandraPort := utils.GetEnvAsInt("CASSANDRA_PORT", 9042)
-	cassandraUser := utils.GetEnv("CASSANDRA_USERNAME", "cassandra")
-	cassandraPass := utils.GetEnv("CASSANDRA_PASSWORD", "cassandra")
+	cassandraUser := mUtils.GetSecret("/var/run/secrets/cassandra/username", "cassandra")
+	cassandraPass := mUtils.GetSecret("/var/run/secrets/cassandra/password", "cassandra")
 	defaultTopology := utils.GetEnv("CASSANDRA_DEFAULT_TOPOLOGY", "{'class':'SimpleStrategy','replication_factor': 1 }")
 	gocqlConnectTimeout := utils.GetEnvAsInt("GOCQL_CONNECT_TIMEOUT", 20)
 	consistecyLevel := utils.GetEnv("GOCQL_CONSISTENCY", "QUORUM")
@@ -60,8 +60,8 @@ func main() {
 
 	// Backup Daemon Administration
 	backupAddress := utils.GetEnv("BACKUP_DAEMON_ADDRESS", fmt.Sprintf("http://%s-backup-daemon:8080", appName))
-	backupDaemonApiUser := utils.GetEnv("BACKUP_DAEMON_API_CREDENTIALS_USERNAME", "")
-	backupDaemonApiUPass := utils.GetEnv("BACKUP_DAEMON_API_CREDENTIALS_PASSWORD", "")
+	backupDaemonApiUser := mUtils.GetSecret("/var/run/secrets/backup/username", "")
+	backupDaemonApiUPass := mUtils.GetSecret("/var/run/secrets/backup/password", "")
 
 	var backupAdminServiceImpl service.BackupAdministrationService
 	if backupAddress == "" || backupDaemonApiUser == "" || backupDaemonApiUPass == "" {

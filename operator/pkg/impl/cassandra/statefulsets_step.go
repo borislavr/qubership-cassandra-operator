@@ -34,6 +34,7 @@ func (r *CassandraStatefulSetStep) Execute(ctx core.ExecutionContext) error {
 
 	dcReplicas := utils.FilterDC(spec.Spec.Cassandra.DeploymentSchema.DataCenters, func(dc *v1alpha1.DataCenter) bool { return dc.Deploy })
 	dataCentersCount := len(dcReplicas)
+	readOnlyRootFilesystem := true
 	allowPrivilegeEscalation := false
 
 	hostNetwork := false
@@ -91,6 +92,7 @@ func (r *CassandraStatefulSetStep) Execute(ctx core.ExecutionContext) error {
 			Env:       reaperEnvs,
 			Resources: *spec.Spec.Reaper.Resources,
 			SecurityContext: &v12.SecurityContext{
+				ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
 				Capabilities: &v12.Capabilities{
 					Drop: []v12.Capability{"ALL"},
 				},
