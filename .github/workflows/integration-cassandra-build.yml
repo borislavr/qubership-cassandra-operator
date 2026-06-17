@@ -9,7 +9,6 @@ permissions:
 
 env:
   CASSANDRA_DISTRO_URL: ${{ github.event.client_payload.cassandra-distro-url }}
-  # CASSANDRA_MAJOR_VERSION: ${{ github.event.client_payload.cassandra-major-version }}
   CASSANDRA_VERSION: ${{ github.event.client_payload.cassandra-version }}
   DOCKER_CONFIG_FILE: ".github/build-config.cfg"
   INTEGRATION_BUILD_BRANCH: "feature/integration-build-${{ github.event.client_payload.cassandra-version }}"
@@ -79,10 +78,10 @@ jobs:
           # shellcheck disable=2129
           CASSANDRA_MAJOR_MINOR_VERSION=$(echo ${CASSANDRA_VERSION} | cut -d. -f1,2)
           # echo "CASSANDRA_MAJOR_MINOR_VERSION=${CASSANDRA_MAJOR_MINOR_VERSION}" >> $GITHUB_OUTPUT
-          DOCKER_CONFIG=$(jq --arg name "docker-cassandra_${CASSANDRA_MAJOR_MINOR_VERSION}" \
+          DOCKER_CONFIG=$(jq --argjson name "docker-cassandra_${CASSANDRA_MAJOR_MINOR_VERSION}" \
           '.components[] | select(.name == $name)' $DOCKER_CONFIG_FILE)
           echo "DOCKER_CONFIG=${DOCKER_CONFIG}" >> $GITHUB_OUTPUT
-          PLATFORMS=$(jq -r '.platforms | join(",")' $DOCKER_CONFIG_FILE)
+          PLATFORMS=$(jq -r '.platforms' $DOCKER_CONFIG_FILE)
           echo "PLATFORMS=${PLATFORMS}" >> $GITHUB_OUTPUT
 
       - name: Docker
