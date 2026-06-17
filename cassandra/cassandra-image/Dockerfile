@@ -45,8 +45,6 @@ ENV CASSANDRA_HOME /opt/cassandra
 COPY pip.conf /etc/pip.conf
 RUN pip3 install cassandra-driver cqlsh --break-system-packages
 
-mkdir -p /tmp/apache-cassandra && tar -xzf apache-cassandra-5.0.4-patched-bin.tar.gz -C /tmp/apache-cassandra --strip-components=1
-
 RUN mkdir -p /tmp/apache-cassandra && wget -qO- $DIST_URL | tar xvfz - -C /tmp/apache-cassandra --strip-components=1 && mv /tmp/apache-cassandra $CASSANDRA_HOME
 ENV PATH $PATH:$CASSANDRA_HOME/bin:$CASSANDRA_HOME/tools/bin
 
